@@ -1,4 +1,4 @@
-module PagesComponents.App.Updates.Project exposing (createProject, deleteProject, updateProject, useProject)
+module PagesComponents.App.Updates.Project exposing (beginCopyToLocalStorage, createProject, deleteProject, endCopyToLocalStorage, loadProject, moveProjectToRepository, moveProjectToServer, updateProject, useProject)
 
 import Conf exposing (conf)
 import DataSources.SqlParser.FileParser exposing (parseSchema)
@@ -9,13 +9,16 @@ import Libs.Maybe as M
 import Libs.Models exposing (FileContent, TrackEvent)
 import Libs.String as S
 import Libs.Task as T
+import List.Extra as List
 import Models.Project as Project exposing (Project)
 import Models.Project.ProjectId exposing (ProjectId)
 import Models.Project.ProjectName exposing (ProjectName)
 import Models.Project.SourceKind as SourceKind
+import Models.Project.Storage as Storage
 import Models.SourceInfo exposing (SourceInfo)
 import PagesComponents.App.Models exposing (Errors, Model, Msg(..), initSwitch)
 import Ports exposing (activateTooltipsAndPopovers, click, dropProject, hideModal, hideOffcanvas, observeTablesSize, saveProject, toastError, toastInfo, track, trackError)
+import Time
 import Tracking exposing (events)
 
 
@@ -95,6 +98,46 @@ useProject project model =
 deleteProject : Project -> Model -> ( Model, Cmd Msg )
 deleteProject project model =
     ( { model | storedProjects = model.storedProjects |> List.filter (\p -> not (p.id == project.id)) }, Cmd.batch [ dropProject project, track (events.deleteProject project) ] )
+
+
+moveProjectToServer : Project -> Model -> ( Model, Cmd Msg )
+moveProjectToServer project model =
+    if project.storage /= Storage.LocalStorage then
+        ( model, Cmd.none )
+
+    else
+        let
+            updatedProject =
+                { project | storage = Storage.Server }
+        in
+        ( { model | project = Just updatedProject }, saveProject updatedProject )
+
+
+moveProjectToRepository : Project -> Model -> ( Model, Cmd Msg )
+moveProjectToRepository project model =
+    if project.storage == Storage.Repository then
+        ( model, Cmd.none )
+
+    else
+        let
+            updatedProject =
+                { project | storage = Storage.Repository }
+        in
+        ( { model | project = Just updatedProject }, saveProject updatedProject )
+
+
+beginCopyToLocalStorage : Project -> Model -> ( Model, Cmd Msg )
+beginCopyToLocalStorage project model =
+    ( { model | project = Just project }, Cmd.batch [ saveProject project, Ports.getCloneProjectId project.id ] )
+
+
+endCopyToLocalStorage : Time.Posix -> Project -> ProjectId -> Model -> ( Model, Cmd Msg )
+endCopyToLocalStorage now project newId model =
+    let
+        updatedProject =
+            { project | storage = Storage.LocalStorage, id = newId, createdAt = now }
+    in
+    ( { model | project = Just updatedProject, storedProjects = updatedProject :: model.storedProjects }, saveProject updatedProject )
 
 
 loadProject : (Project -> TrackEvent) -> Model -> ( Errors, Maybe Project ) -> ( Model, Cmd Msg )

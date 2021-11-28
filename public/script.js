@@ -1,4 +1,4 @@
-window.addEventListener('load', function() {
+window.addEventListener('load', function () {
     const isDev = window.location.hostname === 'localhost'
     const isProd = window.location.hostname === 'azimutt.app'
     const skipAnalytics = !!JSON.parse(localStorage.getItem('skip-analytics'))
@@ -11,8 +11,8 @@ window.addEventListener('load', function() {
 
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register("/service-worker.js")
-            // .then(reg => console.log('service-worker registered!', reg))
-            // .catch(err => console.log('service-worker failed to register!', err))
+        // .then(reg => console.log('service-worker registered!', reg))
+        // .catch(err => console.log('service-worker failed to register!', err))
     }
 
 
@@ -27,23 +27,24 @@ window.addEventListener('load', function() {
         setTimeout(() => {
             // console.log('elm message', msg)
             switch (msg.kind) {
-                case 'Click':         click(msg.id); break;
-                case 'ShowModal':     showModal(msg.id); break;
-                case 'HideModal':     hideModal(msg.id); break;
+                case 'Click': click(msg.id); break;
+                case 'ShowModal': showModal(msg.id); break;
+                case 'HideModal': hideModal(msg.id); break;
                 case 'HideOffcanvas': hideOffcanvas(msg.id); break;
                 case 'ActivateTooltipsAndPopovers': activateTooltipsAndPopovers(); break;
-                case 'ShowToast':     showToast(msg.toast); break;
-                case 'LoadProjects':  loadProjects(); break;
-                case 'SaveProject':   saveProject(msg.project); break;
-                case 'DropProject':   dropProject(msg.project); break;
-                case 'GetLocalFile':  getLocalFile(msg.project, msg.source, msg.file); break;
+                case 'ShowToast': showToast(msg.toast); break;
+                case 'LoadProjects': loadProjects(); break;
+                case 'SaveProject': saveProject(msg.project); break;
+                case 'DropProject': dropProject(msg.project); break;
+                case 'GetLocalFile': getLocalFile(msg.project, msg.source, msg.file); break;
                 case 'GetRemoteFile': getRemoteFile(msg.project, msg.source, msg.url, msg.sample); break;
-                case 'GetSourceId':   getSourceId(msg.src, msg.ref); break;
-                case 'ObserveSizes':  observeSizes(msg.ids); break;
-                case 'ListenKeys':    listenHotkeys(msg.keys); break;
-                case 'TrackPage':     analytics.then(a => a.trackPage(msg.name)); break;
-                case 'TrackEvent':    analytics.then(a => a.trackEvent(msg.name, msg.details)); break;
-                case 'TrackError':    analytics.then(a => a.trackError(msg.name, msg.details)); errorTracking.then(e => e.trackError(msg.name, msg.details)); break;
+                case 'GetSourceId': getSourceId(msg.src, msg.ref); break;
+                case 'GetCloneProjectId': getCloneProjectId(msg.srcId); break;
+                case 'ObserveSizes': observeSizes(msg.ids); break;
+                case 'ListenKeys': listenHotkeys(msg.keys); break;
+                case 'TrackPage': analytics.then(a => a.trackPage(msg.name)); break;
+                case 'TrackEvent': analytics.then(a => a.trackEvent(msg.name, msg.details)); break;
+                case 'TrackError': analytics.then(a => a.trackError(msg.name, msg.details)); errorTracking.then(e => e.trackError(msg.name, msg.details)); break;
                 default: console.error('Unsupported Elm message', msg); break;
             }
         }, 100)
@@ -110,7 +111,7 @@ window.addEventListener('load', function() {
         const values = Object.keys(localStorage)
             .filter(key => key.startsWith(projectPrefix))
             .map(key => [key.replace(projectPrefix, ''), JSON.parse(localStorage.getItem(key))])
-        sendToElm({kind: 'GotProjects', projects: values})
+        sendToElm({ kind: 'GotProjects', projects: values })
     }
     function saveProject(project) {
         const key = projectPrefix + project.id
@@ -122,12 +123,12 @@ window.addEventListener('load', function() {
             localStorage.setItem(key, JSON.stringify(project))
         } catch (e) {
             if (e.code === DOMException.QUOTA_EXCEEDED_ERR) {
-                showToast({kind: 'error', message: "Can't save project, storage quota exceeded. Use a smaller schema or clean unused projects."})
+                showToast({ kind: 'error', message: "Can't save project, storage quota exceeded. Use a smaller schema or clean unused projects." })
             } else {
-                showToast({kind: 'error', message: "Can't save project: " + e.message})
+                showToast({ kind: 'error', message: "Can't save project: " + e.message })
             }
             const name = 'local-storage'
-            const details = {error: e.name, message: e.message}
+            const details = { error: e.name, message: e.message }
             analytics.then(a => a.trackError(name, details)); errorTracking.then(e => e.track(name, details));
         }
     }
@@ -159,11 +160,15 @@ window.addEventListener('load', function() {
                 content,
                 sample
             }))
-            .catch(err => showToast({kind: 'error', message: err}))
+            .catch(err => showToast({ kind: 'error', message: err }))
     }
 
     function getSourceId(src, ref) {
-        sendToElm({kind: 'GotSourceId', now: Date.now(), sourceId: randomUID(), src, ref})
+        sendToElm({ kind: 'GotSourceId', now: Date.now(), sourceId: randomUID(), src, ref })
+    }
+
+    function getCloneProjectId(srcId) {
+        sendToElm({ kind: 'GotCloneProjectId', now: Date.now(), srcId: srcId, newId: randomUID() })
     }
 
     const resizeObserver = new ResizeObserver(entries => {
@@ -178,7 +183,7 @@ window.addEventListener('load', function() {
                 height: entry.contentRect.height
             }
         }))
-        sendToElm({kind: 'GotSizes', sizes: sizes})
+        sendToElm({ kind: 'GotSizes', sizes: sizes })
     })
     function observeSizes(ids) {
         ids.flatMap(maybeElementById).forEach(elt => resizeObserver.observe(elt))
@@ -201,7 +206,7 @@ window.addEventListener('load', function() {
                     if (hotkey.preventDefault) {
                         e.preventDefault()
                     }
-                    sendToElm({kind: 'GotHotkey', id: id})
+                    sendToElm({ kind: 'GotHotkey', id: id })
                 }
             })
         })
@@ -215,7 +220,7 @@ window.addEventListener('load', function() {
         const tracked = findParent(event.target, e => e.getAttribute('data-track-event'))
         if (tracked) {
             const eventName = tracked.getAttribute('data-track-event')
-            const details = {label: tracked.textContent.trim()}
+            const details = { label: tracked.textContent.trim() }
             for (const attr of event.target.attributes) {
                 if (attr.name.startsWith('data-track-event-')) {
                     details[attr.name.replace('data-track-event-', '')] = attr.value
@@ -260,7 +265,7 @@ window.addEventListener('load', function() {
             // see https://sentry.io
             // initial: https://js.sentry-cdn.com/268b122ecafb4f20b6316b87246e509c.min.js
             return loadScript('/assets/sentry-268b122ecafb4f20b6316b87246e509c.min.js').then(() => ({
-                trackError: (name, details) => Sentry.captureException(new Error(JSON.stringify({name, ...details})))
+                trackError: (name, details) => Sentry.captureException(new Error(JSON.stringify({ name, ...details })))
             }))
         } else {
             return Promise.resolve({
@@ -301,7 +306,7 @@ window.addEventListener('load', function() {
     //  - open it when search input is focused
     //  - close it when search input is blurred
     window.addEventListener('hide.bs.dropdown', e => {
-        if(e.target.id === 'search' && e.target === document.activeElement) {
+        if (e.target.id === 'search' && e.target === document.activeElement) {
             e.preventDefault()
         }
     })
@@ -390,7 +395,7 @@ window.addEventListener('load', function() {
         return new Promise((resolve, reject) => {
             const script = document.createElement('script')
             script.src = url
-            script.type='text/javascript'
+            script.type = 'text/javascript'
             script.addEventListener('load', resolve)
             script.addEventListener('error', reject)
             document.getElementsByTagName('head')[0].appendChild(script)
@@ -401,7 +406,7 @@ window.addEventListener('load', function() {
 
     // https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Global_Objects/String/includes
     if (!String.prototype.includes) {
-        String.prototype.includes = function(search, start) {
+        String.prototype.includes = function (search, start) {
             'use strict';
             if (search instanceof RegExp) {
                 throw TypeError('first argument must not be a RegExp');

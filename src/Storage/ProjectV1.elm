@@ -27,6 +27,7 @@ import Models.Project.Relation as Relation exposing (Relation)
 import Models.Project.Source exposing (Source)
 import Models.Project.SourceId as SourceId
 import Models.Project.SourceKind exposing (SourceKind(..))
+import Models.Project.Storage as Storage
 import Models.Project.Table exposing (Table)
 import Models.Project.Unique exposing (Unique)
 import Time
@@ -266,6 +267,7 @@ upgrade : ProjectV1 -> Project
 upgrade project =
     { id = project.id
     , name = project.name
+    , storage = Storage.LocalStorage
     , sources = project.sources |> Nel.toList |> List.map (upgradeProjectSource project.schema.tables project.schema.relations project.fromSample)
     , tables = project.schema.tables |> Dict.map (\_ -> upgradeTable)
     , relations = project.schema.relations |> List.map upgradeRelation

@@ -24,6 +24,7 @@ import Models.Project.ProjectSettings as ProjectSettings exposing (ProjectSettin
 import Models.Project.Relation as Relation exposing (Relation)
 import Models.Project.Source as Source exposing (Source)
 import Models.Project.SourceId exposing (SourceId)
+import Models.Project.Storage as Storage exposing (Storage)
 import Models.Project.Table as Table exposing (Table)
 import Models.Project.TableId as TableId exposing (TableId)
 import Models.Project.TableProps exposing (TableProps)
@@ -33,6 +34,7 @@ import Time
 type alias Project =
     { id : ProjectId
     , name : ProjectName
+    , storage : Storage
     , sources : List Source
     , tables : Dict TableId Table -- computed from sources, do not update directly (see compute function)
     , relations : List Relation -- computed from sources, do not update directly (see compute function)
@@ -45,10 +47,11 @@ type alias Project =
     }
 
 
-new : ProjectId -> ProjectName -> List Source -> Layout -> Maybe LayoutName -> Dict LayoutName Layout -> ProjectSettings -> Time.Posix -> Time.Posix -> Project
-new id name sources layout usedLayout layouts settings createdAt updatedAt =
+new : ProjectId -> ProjectName -> Storage -> List Source -> Layout -> Maybe LayoutName -> Dict LayoutName Layout -> ProjectSettings -> Time.Posix -> Time.Posix -> Project
+new id name storage sources layout usedLayout layouts settings createdAt updatedAt =
     { id = id
     , name = name
+    , storage = storage
     , sources = sources
     , tables = Dict.empty
     , relations = []
@@ -64,7 +67,7 @@ new id name sources layout usedLayout layouts settings createdAt updatedAt =
 
 create : ProjectId -> ProjectName -> Source -> Project
 create id name source =
-    new id name [ source ] (Layout.init source.createdAt) Nothing Dict.empty ProjectSettings.init source.createdAt source.updatedAt
+    new id name Storage.LocalStorage [ source ] (Layout.init source.createdAt) Nothing Dict.empty ProjectSettings.init source.createdAt source.updatedAt
 
 
 setSources : (List Source -> List Source) -> Project -> Project
@@ -183,6 +186,7 @@ encode value =
     E.object
         [ ( "id", value.id |> ProjectId.encode )
         , ( "name", value.name |> ProjectName.encode )
+        , ( "storage", value.storage |> Storage.encode )
         , ( "sources", value.sources |> Encode.list Source.encode )
         , ( "layout", value.layout |> Layout.encode )
         , ( "usedLayout", value.usedLayout |> E.maybe LayoutName.encode )
@@ -196,9 +200,10 @@ encode value =
 
 decode : Decode.Decoder Project
 decode =
-    D.map9 new
+    D.map10 new
         (Decode.field "id" ProjectId.decode)
         (Decode.field "name" ProjectName.decode)
+        (D.defaultField "storage" Storage.decode Storage.LocalStorage)
         (Decode.field "sources" (Decode.list Source.decode))
         (D.defaultField "layout" Layout.decode (Layout.init (Time.millisToPosix 0)))
         (D.maybeField "usedLayout" LayoutName.decode)

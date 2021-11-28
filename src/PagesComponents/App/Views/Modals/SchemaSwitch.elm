@@ -15,6 +15,7 @@ import Libs.String as S
 import Models.Project exposing (Project)
 import Models.Project.ProjectId exposing (ProjectId)
 import Models.Project.SourceId as SourceId exposing (SourceId)
+import Models.Project.Storage as Storage
 import PagesComponents.App.Models exposing (Msg(..), SourceMsg(..), Switch, TimeInfo)
 import PagesComponents.App.Views.Helpers exposing (formatDate, onClickConfirm)
 import Time
@@ -43,7 +44,7 @@ viewSavedProjects time storedProjects =
                     div [ class "col" ]
                         [ div [ class "card h-100" ]
                             [ div [ class "card-body" ]
-                                [ h5 [ class "card-title" ] [ text prj.name ]
+                                [ h5 [ class "card-title" ] [ Storage.viewLabel prj.storage, text prj.name ]
                                 , p [ class "card-text" ]
                                     [ small [ class "text-muted" ]
                                         [ text (S.plural (Dict.size prj.layouts) "No saved layout" "1 saved layout" "saved layouts")

@@ -1,4 +1,4 @@
-port module Ports exposing (JsMsg(..), activateTooltipsAndPopovers, click, dropProject, getSourceId, hideModal, hideOffcanvas, listenHotkeys, loadProjects, observeSize, observeTableSize, observeTablesSize, onJsMessage, readLocalFile, readRemoteFile, saveProject, showModal, toastError, toastInfo, toastWarning, track, trackError, trackJsonError, trackPage)
+port module Ports exposing (JsMsg(..), activateTooltipsAndPopovers, click, dropProject, getCloneProjectId, getSourceId, hideModal, hideOffcanvas, listenHotkeys, loadProjects, observeSize, observeTableSize, observeTablesSize, onJsMessage, readLocalFile, readRemoteFile, saveProject, showModal, toastError, toastInfo, toastWarning, track, trackError, trackJsonError, trackPage)
 
 import Dict exposing (Dict)
 import FileValue exposing (File)
@@ -98,6 +98,11 @@ getSourceId src ref =
     messageToJs (GetSourceId src ref)
 
 
+getCloneProjectId : ProjectId -> Cmd msg
+getCloneProjectId srcId =
+    messageToJs (GetCloneProjectId srcId)
+
+
 observeSize : HtmlId -> Cmd msg
 observeSize id =
     observeSizes [ id ]
@@ -160,6 +165,7 @@ type ElmMsg
     | GetLocalFile (Maybe ProjectId) (Maybe SourceId) File
     | GetRemoteFile (Maybe ProjectId) (Maybe SourceId) FileUrl (Maybe SampleName)
     | GetSourceId ColumnRef ColumnRef
+    | GetCloneProjectId ProjectId
     | ObserveSizes (List HtmlId)
     | ListenKeys (Dict String (List Hotkey))
     | TrackPage String
@@ -173,6 +179,7 @@ type JsMsg
     | GotLocalFile Time.Posix ProjectId SourceId File FileContent
     | GotRemoteFile Time.Posix ProjectId SourceId FileUrl FileContent (Maybe SampleName)
     | GotSourceId Time.Posix SourceId ColumnRef ColumnRef
+    | GotCloneProjectId Time.Posix ProjectId ProjectId
     | GotHotkey String
     | Error Decode.Error
 
@@ -238,6 +245,9 @@ elmEncoder elm =
         GetSourceId src ref ->
             Encode.object [ ( "kind", "GetSourceId" |> Encode.string ), ( "src", src |> ColumnRef.encode ), ( "ref", ref |> ColumnRef.encode ) ]
 
+        GetCloneProjectId srcId ->
+            Encode.object [ ( "kind", "GetCloneProjectId" |> Encode.string ), ( "srcId", srcId |> ProjectId.encode ) ]
+
         ObserveSizes ids ->
             Encode.object [ ( "kind", "ObserveSizes" |> Encode.string ), ( "ids", ids |> Encode.list Encode.string ) ]
 
@@ -300,6 +310,12 @@ jsDecoder =
                         (Decode.field "sourceId" SourceId.decode)
                         (Decode.field "src" ColumnRef.decode)
                         (Decode.field "ref" ColumnRef.decode)
+
+                "GotCloneProjectId" ->
+                    Decode.map3 GotCloneProjectId
+                        (Decode.field "now" Decode.int |> Decode.map Time.millisToPosix)
+                        (Decode.field "srcId" ProjectId.decode)
+                        (Decode.field "newId" ProjectId.decode)
 
                 "GotHotkey" ->
                     Decode.field "id" Decode.string |> Decode.map GotHotkey

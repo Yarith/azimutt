@@ -70,6 +70,10 @@ type Msg
     | ChangeProject
     | ProjectsLoaded (List Project)
     | SourceMsg SourceMsg
+    | MoveProjectToServer Project
+    | MoveProjectToRepository Project
+    | BeginCopyToLocalStorage Project
+    | EndCopyToLocalStorage Time.Posix ProjectId ProjectId
     | DeleteProject Project
     | UseProject Project
     | ChangedSearch Search

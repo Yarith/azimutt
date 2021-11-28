@@ -10,6 +10,7 @@ import Libs.Bool as B
 import Libs.List as L
 import Libs.Maybe as M
 import Libs.Models.Position as Position
+import Maybe.Extra as Maybe
 import Page
 import PagesComponents.App.Commands.GetTime exposing (getTime)
 import PagesComponents.App.Commands.GetZone exposing (getZone)
@@ -21,7 +22,7 @@ import PagesComponents.App.Updates.FindPath exposing (handleFindPath)
 import PagesComponents.App.Updates.Helpers exposing (setCanvas, setCurrentLayout, setProject, setProjectWithCmd, setTableInList, setTables, setTime)
 import PagesComponents.App.Updates.Layout exposing (handleLayout)
 import PagesComponents.App.Updates.PortMsg exposing (handlePortMsg)
-import PagesComponents.App.Updates.Project exposing (deleteProject, useProject)
+import PagesComponents.App.Updates.Project as Project exposing (deleteProject, useProject)
 import PagesComponents.App.Updates.Settings exposing (handleSettings)
 import PagesComponents.App.Updates.Source exposing (handleSource)
 import PagesComponents.App.Updates.Table exposing (hideAllTables, hideColumn, hideColumns, hideTable, hoverNextColumn, showAllTables, showColumn, showColumns, showTable, showTables, sortColumns)
@@ -105,6 +106,23 @@ update msg model =
 
         SourceMsg m ->
             model |> handleSource m
+
+        MoveProjectToServer project ->
+            model |> Project.moveProjectToServer project
+
+        MoveProjectToRepository project ->
+            model |> Project.moveProjectToRepository project
+
+        BeginCopyToLocalStorage project ->
+            model |> Project.beginCopyToLocalStorage project
+
+        EndCopyToLocalStorage now srcId newId ->
+            case Maybe.filter (.id >> (==) srcId) model.project of
+                Just project ->
+                    model |> Project.endCopyToLocalStorage now project newId
+
+                Nothing ->
+                    ( model, Cmd.none )
 
         ChangeProject ->
             ( model, Cmd.batch [ hideOffcanvas conf.ids.menu, showModal conf.ids.projectSwitchModal, loadProjects ] )

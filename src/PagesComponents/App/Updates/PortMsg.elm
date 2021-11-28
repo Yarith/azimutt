@@ -35,6 +35,9 @@ handlePortMsg msg model =
         GotSourceId now sourceId src ref ->
             send (SourceMsg (CreateSource (Source sourceId "User" UserDefined Array.empty Dict.empty [ Relation.virtual src ref sourceId ] True Nothing now now) "Relation added to newly create <b>User</b> source."))
 
+        GotCloneProjectId now srcId newId ->
+            send (EndCopyToLocalStorage now srcId newId)
+
         GotHotkey hotkey ->
             Cmd.batch (handleHotkey model hotkey)
 

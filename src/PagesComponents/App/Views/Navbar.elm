@@ -19,6 +19,7 @@ import Models.Project exposing (Project)
 import Models.Project.Column exposing (Column)
 import Models.Project.Layout exposing (Layout)
 import Models.Project.LayoutName exposing (LayoutName)
+import Models.Project.Storage as Storage
 import Models.Project.Table exposing (Table)
 import Models.Project.TableId as TableId exposing (TableId)
 import PagesComponents.App.Models exposing (FindPathMsg(..), LayoutMsg(..), Msg(..), Search, VirtualRelation, VirtualRelationMsg(..))
@@ -86,12 +87,12 @@ viewTitle storedProjects project =
         [ ol [ class "breadcrumb my-auto" ]
             ([ li [ class "breadcrumb-item" ]
                 [ div [ class "dropdown d-inline-block" ]
-                    [ button [ type_ "button", class "link dropdown-toggle", id conf.ids.navProjectDropdown, title (String.fromInt (Dict.size project.tables) ++ " tables"), bsToggle Dropdown, ariaExpanded False ] [ text project.name ]
+                    [ button [ type_ "button", class "link dropdown-toggle", id conf.ids.navProjectDropdown, title (String.fromInt (Dict.size project.tables) ++ " tables"), bsToggle Dropdown, ariaExpanded False ] [ Storage.viewLabel project.storage, text project.name ]
                     , ul [ class "dropdown-menu", ariaLabelledby conf.ids.navProjectDropdown ]
                         (intersperse (li [] [ hr [ class "dropdown-divider" ] [] ])
                             [ storedProjects
                                 |> List.filter (\p -> p.name /= project.name)
-                                |> List.map (\p -> li [] [ button [ type_ "button", class "dropdown-item", onClick (UseProject p) ] [ text p.name ] ])
+                                |> List.map (\p -> li [] [ button [ type_ "button", class "dropdown-item", onClick (UseProject p) ] [ Storage.viewLabel p.storage, text p.name ] ])
                             , [ li [] [ button [ type_ "button", class "dropdown-item", onClick ChangeProject ] [ text "Move to project..." ] ] ]
                             ]
                         )

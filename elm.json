@@ -20,6 +20,8 @@
             "elm/svg": "1.0.1",
             "elm/time": "1.0.0",
             "elm/url": "1.0.0",
+            "elm-community/list-extra": "8.5.1",
+            "elm-community/maybe-extra": "5.2.1",
             "elm-explorations/markdown": "1.0.0",
             "lattyware/elm-fontawesome": "5.0.0",
             "matheus23/elm-default-tailwind-modules": "2.0.1",

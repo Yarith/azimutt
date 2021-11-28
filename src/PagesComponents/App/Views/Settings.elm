@@ -21,7 +21,9 @@ import Models.Project.ProjectSettings exposing (ProjectSettings)
 import Models.Project.SchemaName exposing (SchemaName)
 import Models.Project.Source exposing (Source)
 import Models.Project.SourceKind exposing (SourceKind(..))
+import Models.Project.Storage as Storage
 import PagesComponents.App.Models exposing (Msg(..), SettingsMsg(..), SourceMsg(..), TimeInfo)
+import PagesComponents.App.Updates.Project exposing (moveProjectToRepository)
 import PagesComponents.App.Views.Modals.SchemaSwitch exposing (viewFileLoader)
 import Time
 
@@ -42,20 +44,91 @@ viewSettings time project =
             (div [] [])
 
 
+cloneProjectButton : Project -> Html Msg
+cloneProjectButton project =
+    button
+        [ type_ "button"
+        , class "link ms-2"
+        , title "create a local copy"
+        , onClick (OpenConfirm { content = span [] [ text "Do you really want to create a copy of this project?" ], cmd = send (BeginCopyToLocalStorage project) })
+        ]
+        [ viewIcon Icon.copy ]
+
+
+moveToRepositoryButton : Project -> Html Msg
+moveToRepositoryButton project =
+    button
+        [ type_ "button"
+        , class "link ms-2"
+        , title "move project to server"
+        , onClick (OpenConfirm { content = span [] [ text "Do you really want to move this project to the repository?" ], cmd = send (MoveProjectToRepository project) })
+        ]
+        [ viewIcon (Storage.icon Storage.Repository) ]
+
+
+viewStorage : Project -> Html Msg
+viewStorage project =
+    let
+        storageLabel =
+            label [] [ text "Storage:" ]
+    in
+    case project.storage of
+        Storage.Repository ->
+            div []
+                [ storageLabel
+                , span [] [ Storage.viewLabel project.storage ]
+                , label [] [ text "Actions: " ]
+                , cloneProjectButton project
+                ]
+
+        Storage.Server ->
+            div []
+                [ storageLabel
+                , span []
+                    [ Storage.viewLabel project.storage
+                    , label [] [ text "Actions: " ]
+                    , moveToRepositoryButton project
+                    , cloneProjectButton project
+                    ]
+                ]
+
+        Storage.LocalStorage ->
+            div []
+                [ storageLabel
+                , span []
+                    [ Storage.viewLabel project.storage
+                    , label [] [ text "Actions: " ]
+                    , moveToRepositoryButton project
+                    , button
+                        [ type_ "button"
+                        , class "link ms-2"
+                        , title "move project to server"
+                        , onClick (OpenConfirm { content = span [] [ text "Do you really want to move this project to the server storage?" ], cmd = send (MoveProjectToServer project) })
+                        ]
+                        [ viewIcon (Storage.icon Storage.Server) ]
+                    , cloneProjectButton project
+                    ]
+                ]
+
+
 viewProjectName : Project -> Html Msg
 viewProjectName project =
-    div [ class "mt-3" ]
-        [ label [ class "form-label", for "settings-project-name" ] [ text "Project name:" ]
-        , input
-            [ type_ "text"
-            , class "form-control"
-            , id "settings-project-name"
-            , ariaDescribedby "settings-project-name-help"
-            , placeholder "Project name"
-            , value project.name
-            , onInput (\v -> SettingsMsg (UpdateProjectName v))
+    fieldset []
+        [ legend [] [ text "Project" ]
+        , div []
+            [ label [ class "form-label", for "settings-project-name" ] [ text "Project name:" ]
+            , input
+                [ type_ "text"
+                , class "form-control"
+                , id "settings-project-name"
+                , ariaDescribedby "settings-project-name-help"
+                , placeholder "Project name"
+                , value project.name
+                , onInput (\v -> SettingsMsg (UpdateProjectName v))
+                ]
+                []
             ]
-            []
+        , viewStorage project
         ]
 
 
