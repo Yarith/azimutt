@@ -23,7 +23,7 @@ viewApp model =
     List.concatMap identity
         [ [ Icon.css
           , node "style" [] [ text "body { overflow: hidden; }" ]
-          , node "link" [ rel "stylesheet", href "/assets/bootstrap.min.css" ] []
+          , node "link" [ rel "stylesheet", href "/sites/azimutt/assets/bootstrap.min.css" ] []
           ]
         , [ lazy4 viewNavbar model.search model.storedProjects model.project model.virtualRelation ]
         , [ lazy viewMenu model.project ]

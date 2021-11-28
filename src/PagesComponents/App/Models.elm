@@ -19,6 +19,7 @@ import Models.Project.FindPath exposing (FindPath)
 import Models.Project.FindPathSettings exposing (FindPathSettings)
 import Models.Project.LayoutName exposing (LayoutName)
 import Models.Project.ProjectId exposing (ProjectId)
+import Models.Project.ProjectName exposing (ProjectName)
 import Models.Project.Relation exposing (Relation)
 import Models.Project.SampleName exposing (SampleName)
 import Models.Project.SchemaName exposing (SchemaName)
@@ -113,6 +114,7 @@ type SettingsMsg
     | UpdateRemovedTables String
     | UpdateHiddenColumns String
     | UpdateColumnOrder ColumnOrder
+    | UpdateProjectName ProjectName
 
 
 type SourceMsg

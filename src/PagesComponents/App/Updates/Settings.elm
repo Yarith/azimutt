@@ -8,11 +8,12 @@ import Models.ColumnOrder as ColumnOrder exposing (ColumnOrder)
 import Models.Project as Project exposing (Project)
 import Models.Project.Column exposing (Column)
 import Models.Project.Layout exposing (Layout)
+import Models.Project.ProjectName exposing (ProjectName)
 import Models.Project.ProjectSettings as ProjectSettings exposing (ProjectSettings)
 import Models.Project.Table exposing (Table)
 import Models.Project.TableProps exposing (TableProps)
 import PagesComponents.App.Models exposing (Model, Msg, SettingsMsg(..))
-import PagesComponents.App.Updates.Helpers exposing (setLayout, setProject, setSettings)
+import PagesComponents.App.Updates.Helpers exposing (setLayout, setProject, setProjectWithCmd, setSettings)
 import Ports exposing (observeTablesSize)
 
 
@@ -33,6 +34,18 @@ handleSettings msg model =
 
         UpdateColumnOrder order ->
             ( model |> setProject (\p -> p |> setSettings (\s -> { s | columnOrder = order }) |> setLayout (sortColumns order p)), Cmd.none )
+
+        UpdateProjectName name ->
+            model |> setProjectWithCmd (updateProjectName name)
+
+
+updateProjectName : ProjectName -> Project -> ( Project, Cmd Msg )
+updateProjectName name p =
+    let
+        up =
+            { p | name = name }
+    in
+    ( up, Ports.saveProject up )
 
 
 updateSettingsAndComputeProject : (ProjectSettings -> ProjectSettings) -> Model -> ( Model, Cmd Msg )

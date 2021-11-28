@@ -36,10 +36,27 @@ viewSettings time project =
                         [ h5 [ class "offcanvas-title", id (conf.ids.settings ++ "-label") ] [ text "Settings" ]
                         , button [ type_ "button", class "btn-close text-reset", bsDismiss Offcanvas, ariaLabel "Close" ] []
                         ]
-                    , div [ class "offcanvas-body" ] [ viewSourcesSection time p, viewSchemasSection p, viewDisplaySettingsSection p.settings ]
+                    , div [ class "offcanvas-body" ] [ viewProjectName p, viewSourcesSection time p, viewSchemasSection p, viewDisplaySettingsSection p.settings ]
                     ]
             )
             (div [] [])
+
+
+viewProjectName : Project -> Html Msg
+viewProjectName project =
+    div [ class "mt-3" ]
+        [ label [ class "form-label", for "settings-project-name" ] [ text "Project name:" ]
+        , input
+            [ type_ "text"
+            , class "form-control"
+            , id "settings-project-name"
+            , ariaDescribedby "settings-project-name-help"
+            , placeholder "Project name"
+            , value project.name
+            , onInput (\v -> SettingsMsg (UpdateProjectName v))
+            ]
+            []
+        ]
 
 
 viewSourcesSection : TimeInfo -> Project -> Html Msg
