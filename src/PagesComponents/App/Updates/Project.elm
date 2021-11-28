@@ -4,9 +4,11 @@ import Conf exposing (conf)
 import DataSources.SqlParser.FileParser exposing (parseSchema)
 import DataSources.SqlParser.ProjectAdapter exposing (buildSourceFromSql)
 import Dict
+import Libs.DomInfo exposing (DomInfo)
 import Libs.List as L
 import Libs.Maybe as M
 import Libs.Models exposing (FileContent, TrackEvent)
+import Libs.Models.HtmlId exposing (HtmlId)
 import Libs.String as S
 import Libs.Task as T
 import List.Extra as List
@@ -15,9 +17,11 @@ import Models.Project.ProjectId exposing (ProjectId)
 import Models.Project.ProjectName exposing (ProjectName)
 import Models.Project.SourceKind as SourceKind
 import Models.Project.Storage as Storage
+import Models.Project.TableId as TableId
 import Models.SourceInfo exposing (SourceInfo)
 import PagesComponents.App.Models exposing (Errors, Model, Msg(..), initSwitch)
 import Ports exposing (activateTooltipsAndPopovers, click, dropProject, hideModal, hideOffcanvas, observeTablesSize, saveProject, toastError, toastInfo, track, trackError)
+import Set
 import Time
 import Tracking exposing (events)
 
@@ -146,7 +150,22 @@ loadProject projectEvent model ( errors, project ) =
         | switch = initSwitch
         , storedProjects = model.storedProjects |> L.appendOn (project |> M.filter (\p -> model.storedProjects |> List.all (\s -> s.name /= p.name))) identity
         , project = project
-        , domInfos = model.domInfos |> Dict.filter (\id _ -> not (id |> String.startsWith "table-"))
+        , domInfos =
+            let
+                keepTablesVisible =
+                    model.project
+                        |> Maybe.map (.layout >> .tables)
+                        |> Maybe.withDefault []
+                        |> List.map (.id >> TableId.toHtmlId)
+                        |> Set.fromList
+
+                domInfoFilter : HtmlId -> DomInfo -> Bool
+                domInfoFilter id _ =
+                    Set.member id keepTablesVisible
+                        || not (id |> String.startsWith "table-")
+            in
+            model.domInfos
+                |> Dict.filter domInfoFilter
       }
     , Cmd.batch
         ((errors |> List.map toastError)
@@ -154,21 +173,20 @@ loadProject projectEvent model ( errors, project ) =
             ++ (project
                     |> M.mapOrElse
                         (\p ->
-                            (if not (p.layout.tables |> List.isEmpty) then
+                            [ if not (p.layout.tables |> List.isEmpty) then
                                 observeTablesSize (p.layout.tables |> List.map .id)
 
-                             else if Dict.size p.tables < 10 then
+                              else if Dict.size p.tables < 10 then
                                 T.send ShowAllTables
 
-                             else
+                              else
                                 click conf.ids.searchInput
-                            )
-                                :: [ toastInfo ("<b>" ++ p.name ++ "</b> loaded.<br>Use the search bar to explore it")
-                                   , hideModal conf.ids.projectSwitchModal
-                                   , saveProject p
-                                   , activateTooltipsAndPopovers
-                                   , track (projectEvent p)
-                                   ]
+                            , toastInfo ("<b>" ++ p.name ++ "</b> loaded.<br>Use the search bar to explore it")
+                            , hideModal conf.ids.projectSwitchModal
+                            , saveProject p
+                            , activateTooltipsAndPopovers
+                            , track (projectEvent p)
+                            ]
                         )
                         []
                )
