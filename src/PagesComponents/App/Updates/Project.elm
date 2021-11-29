@@ -144,20 +144,46 @@ endCopyToLocalStorage now project newId model =
     ( { model | project = Just updatedProject, storedProjects = updatedProject :: model.storedProjects }, saveProject updatedProject )
 
 
+putCurrentOpenProjectToStoredProjects : Model -> List Project
+putCurrentOpenProjectToStoredProjects model =
+    case model.project of
+        Nothing ->
+            model.storedProjects
+
+        Just project ->
+            model.storedProjects
+                |> List.map
+                    (\sp ->
+                        if sp.id /= project.id then
+                            sp
+
+                        else
+                            project
+                    )
+
+
 loadProject : (Project -> TrackEvent) -> Model -> ( Errors, Maybe Project ) -> ( Model, Cmd Msg )
 loadProject projectEvent model ( errors, project ) =
     ( { model
         | switch = initSwitch
-        , storedProjects = model.storedProjects |> L.appendOn (project |> M.filter (\p -> model.storedProjects |> List.all (\s -> s.name /= p.name))) identity
+        , storedProjects =
+            let
+                storedProjects =
+                    putCurrentOpenProjectToStoredProjects model
+            in
+            storedProjects |> L.appendOn (project |> M.filter (\p -> storedProjects |> List.all (\s -> s.id /= p.id))) identity
         , project = project
         , domInfos =
             let
                 keepTablesVisible =
-                    model.project
-                        |> Maybe.map (.layout >> .tables)
-                        |> Maybe.withDefault []
-                        |> List.map (.id >> TableId.toHtmlId)
-                        |> Set.fromList
+                    case model.project of
+                        Just mp ->
+                            mp.layout.tables
+                                |> List.map (.id >> TableId.toHtmlId)
+                                |> Set.fromList
+
+                        Nothing ->
+                            Set.fromList []
 
                 domInfoFilter : HtmlId -> DomInfo -> Bool
                 domInfoFilter id _ =
@@ -183,6 +209,12 @@ loadProject projectEvent model ( errors, project ) =
                                 click conf.ids.searchInput
                             , toastInfo ("<b>" ++ p.name ++ "</b> loaded.<br>Use the search bar to explore it")
                             , hideModal conf.ids.projectSwitchModal
+                            , case model.project of
+                                Just prevproj ->
+                                    saveProject prevproj
+
+                                Nothing ->
+                                    Cmd.none
                             , saveProject p
                             , activateTooltipsAndPopovers
                             , track (projectEvent p)
