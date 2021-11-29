@@ -21,6 +21,7 @@ import Models.ColumnRefFull exposing (ColumnRefFull)
 import Models.Project exposing (Project, viewportSize)
 import Models.Project.CanvasProps exposing (CanvasProps)
 import Models.Project.ColumnRef exposing (ColumnRef)
+import Models.Project.ProjectId exposing (ProjectId)
 import Models.Project.Relation exposing (Relation)
 import Models.Project.Table exposing (Table)
 import Models.Project.TableId as TableId exposing (TableId)
@@ -33,8 +34,8 @@ import PagesComponents.App.Views.Erd.Table exposing (viewTable)
 import PagesComponents.App.Views.Helpers exposing (onDrag, placeAt, size, sizeAttr)
 
 
-viewErd : Hover -> CursorMode -> Maybe DragState -> Maybe VirtualRelation -> Maybe Area -> Dict HtmlId DomInfo -> Maybe Project -> Html Msg
-viewErd hover cursorMode dragState virtualRelation selection domInfos project =
+viewErd : ProjectId -> Hover -> CursorMode -> Maybe DragState -> Maybe VirtualRelation -> Maybe Area -> Dict HtmlId DomInfo -> Maybe Project -> Html Msg
+viewErd projectId hover cursorMode dragState virtualRelation selection domInfos project =
     div
         [ class "erd"
         , classList
@@ -48,12 +49,12 @@ viewErd hover cursorMode dragState virtualRelation selection domInfos project =
         , onDrag conf.ids.erd
         ]
         [ div [ class "canvas", placeAndZoom (project |> M.mapOrElse (.layout >> .canvas) (CanvasProps (Position 0 0) 1)) ]
-            (project |> M.mapOrElse (\p -> viewErdContent hover virtualRelation selection domInfos p) [])
+            (project |> M.mapOrElse (\p -> viewErdContent projectId hover virtualRelation selection domInfos p) [])
         ]
 
 
-viewErdContent : Hover -> Maybe VirtualRelation -> Maybe Area -> Dict HtmlId DomInfo -> Project -> List (Html Msg)
-viewErdContent hover virtualRelation selection domInfos project =
+viewErdContent : ProjectId -> Hover -> Maybe VirtualRelation -> Maybe Area -> Dict HtmlId DomInfo -> Project -> List (Html Msg)
+viewErdContent projectId hover virtualRelation selection domInfos project =
     let
         layoutTablesDict : Dict TableId ( TableProps, Int )
         layoutTablesDict =
@@ -79,7 +80,7 @@ viewErdContent hover virtualRelation selection domInfos project =
                             |> Maybe.map (\ref -> ( ref, vr.mouse |> pagePosToCanvasPos domInfos project.layout.canvas ))
                     )
     in
-    [ lazy7 viewTables hover virtualRelation domInfos project.layout.canvas.zoom project.layout.tables shownRelations project.tables
+    [ lazy8 viewTables projectId hover virtualRelation domInfos project.layout.canvas.zoom project.layout.tables shownRelations project.tables
     , lazy2 viewRelations hover shownRelations
     , selection |> M.mapOrElse viewSelectSquare (div [] [])
     , virtualRelationShown |> M.mapOrElse viewVirtualRelation (div [] [])
@@ -91,15 +92,15 @@ viewSelectSquare area =
     div ([ class "selection-area", placeAt area.position ] ++ size area.size) []
 
 
-viewTables : Hover -> Maybe VirtualRelation -> Dict HtmlId DomInfo -> ZoomLevel -> List TableProps -> List RelationFull -> Dict TableId Table -> Html Msg
-viewTables hover virtualRelation domInfos zoom layoutTables shownRelations tables =
+viewTables : ProjectId -> Hover -> Maybe VirtualRelation -> Dict HtmlId DomInfo -> ZoomLevel -> List TableProps -> List RelationFull -> Dict TableId Table -> Html Msg
+viewTables projectId hover virtualRelation domInfos zoom layoutTables shownRelations tables =
     Keyed.node "div"
         [ class "tables" ]
         (layoutTables
             |> List.reverse
             |> L.filterZip (\t -> tables |> Dict.get t.id)
             |> List.map (\( p, t ) -> ( ( t, p ), ( shownRelations |> List.filter (\r -> r.src.table.id == t.id || r.ref.table.id == t.id), domInfos |> Dict.get (TableId.toHtmlId p.id) ) ))
-            |> List.indexedMap (\i ( ( table, props ), ( rels, domInfo ) ) -> ( TableId.toString table.id, lazy8 viewTable hover virtualRelation zoom i table props rels domInfo ))
+            |> List.indexedMap (\i ( ( table, props ), ( rels, domInfo ) ) -> ( projectId ++ "/" ++ TableId.toString table.id, lazy8 viewTable hover virtualRelation zoom i table props rels domInfo ))
         )
 
 

@@ -3,7 +3,7 @@ module PagesComponents.App.View exposing (viewApp)
 import FontAwesome.Styles as Icon
 import Html exposing (Html, node, text)
 import Html.Attributes exposing (href, rel)
-import Html.Lazy exposing (lazy, lazy2, lazy3, lazy4, lazy7)
+import Html.Lazy exposing (lazy, lazy2, lazy3, lazy4, lazy7, lazy8)
 import Libs.Maybe as M
 import PagesComponents.App.Models exposing (Model, Msg(..))
 import PagesComponents.App.Views.Command exposing (viewCommands)
@@ -23,12 +23,17 @@ viewApp model =
     List.concatMap identity
         [ [ Icon.css
           , node "style" [] [ text "body { overflow: hidden; }" ]
-          , node "link" [ rel "stylesheet", href "/sites/azimutt/assets/bootstrap.min.css" ] []
+          , node "link" [ rel "stylesheet", href "/assets/bootstrap.min.css" ] []
           ]
         , [ lazy4 viewNavbar model.search model.storedProjects model.project model.virtualRelation ]
         , [ lazy viewMenu model.project ]
         , [ lazy2 viewSettings model.time model.project ]
-        , [ lazy7 viewErd model.hover model.cursorMode model.dragState model.virtualRelation model.selection model.domInfos model.project ]
+        , [ let
+                projectId =
+                    model.project |> Maybe.map .id |> Maybe.withDefault "?"
+            in
+            lazy8 viewErd projectId model.hover model.cursorMode model.dragState model.virtualRelation model.selection model.domInfos model.project
+          ]
         , [ lazy2 viewCommands model.cursorMode (model.project |> Maybe.map (.layout >> .canvas)) ]
         , [ lazy4 viewSchemaSwitchModal model.time model.switch (model.project |> M.mapOrElse (\_ -> "Azimutt, easily explore your SQL schema!") "Choose your project:") model.storedProjects ]
         , [ lazy viewCreateLayoutModal model.newLayout ]
