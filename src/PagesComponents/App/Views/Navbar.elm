@@ -7,7 +7,7 @@ import FontAwesome.Solid as Icon
 import Html exposing (Html, b, button, div, form, hr, img, input, kbd, li, nav, ol, span, text, ul)
 import Html.Attributes exposing (alt, attribute, autocomplete, class, height, id, placeholder, src, title, type_, value)
 import Html.Events exposing (onClick, onInput)
-import Html.Lazy exposing (lazy2)
+import Html.Lazy exposing (lazy2, lazy3)
 import Libs.Bootstrap exposing (BsColor(..), Toggle(..), bsButton, bsToggle, bsToggleCollapse, bsToggleDropdown, bsToggleModal, bsToggleOffcanvas)
 import Libs.Html.Attributes exposing (ariaExpanded, ariaLabel, ariaLabelledby, track)
 import Libs.List as L
@@ -24,6 +24,21 @@ import Models.Project.Table exposing (Table)
 import Models.Project.TableId as TableId exposing (TableId)
 import PagesComponents.App.Models exposing (FindPathMsg(..), LayoutMsg(..), Msg(..), Search, VirtualRelation, VirtualRelationMsg(..))
 import Tracking exposing (events)
+
+
+isLayoutSaved : Layout -> Maybe LayoutName -> Dict LayoutName Layout -> Bool
+isLayoutSaved layout usedLayout layouts =
+    case usedLayout of
+        Nothing ->
+            False
+
+        Just usedLayoutValue ->
+            case Dict.get usedLayoutValue layouts of
+                Nothing ->
+                    False
+
+                Just savedLayout ->
+                    savedLayout == layout
 
 
 viewNavbar : Search -> List Project -> Maybe Project -> Maybe VirtualRelation -> Html Msg
@@ -45,7 +60,7 @@ viewNavbar search storedProjects project virtualRelation =
                                 (\p ->
                                     [ viewTitle storedProjects p
                                     , viewResetButton p.usedLayout p.layout
-                                    , lazy2 viewLayoutButton p.usedLayout p.layouts
+                                    , lazy3 viewLayoutButton (isLayoutSaved p.layout p.usedLayout p.layouts) p.usedLayout p.layouts
                                     , viewSpecialFeaturesButton virtualRelation
                                     , viewSettingsButton
                                     ]
@@ -139,8 +154,8 @@ viewResetButton selectedLayout layout =
         div [] []
 
 
-viewLayoutButton : Maybe LayoutName -> Dict LayoutName Layout -> Html Msg
-viewLayoutButton usedLayout layouts =
+viewLayoutButton : Bool -> Maybe LayoutName -> Dict LayoutName Layout -> Html Msg
+viewLayoutButton usedLayoutSaved usedLayout layouts =
     if Dict.isEmpty layouts then
         bsButton Secondary ([ class "me-2", title "Save your current layout to reload it later" ] ++ bsToggleModal conf.ids.newLayoutModal ++ track events.openSaveLayout) [ text "Save layout" ]
 
@@ -149,7 +164,12 @@ viewLayoutButton usedLayout layouts =
             ((usedLayout
                 |> M.mapOrElse
                     (\layout ->
-                        [ bsButton Secondary [ onClick (LayoutMsg (LUpdate layout)) ] [ text ("Update '" ++ layout ++ "'") ]
+                        [ bsButton Secondary [ onClick (LayoutMsg (LUpdate layout)) ] <|
+                            if usedLayoutSaved then
+                                [ viewIcon Icon.check, text " ", text ("Saved '" ++ layout ++ "'") ]
+
+                            else
+                                [ viewIcon Icon.save, text " ", text ("Update '" ++ layout ++ "'") ]
                         , bsButton Secondary [ class "dropdown-toggle dropdown-toggle-split", bsToggle Dropdown, ariaExpanded False ] [ span [ class "visually-hidden" ] [ text "Toggle Dropdown" ] ]
                         ]
                     )
