@@ -11,6 +11,7 @@ import Libs.List as L
 import Libs.Maybe as M
 import Libs.Models.Position as Position
 import Maybe.Extra as Maybe
+import Models.Project.Storage as Storage
 import Page
 import PagesComponents.App.Commands.GetTime exposing (getTime)
 import PagesComponents.App.Commands.GetZone exposing (getZone)
@@ -37,10 +38,10 @@ import View exposing (View)
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
-page _ _ =
+page shared _ =
     Page.element
         { init = init
-        , update = update
+        , update = update shared
         , view = view
         , subscriptions = subscriptions
         }
@@ -91,8 +92,8 @@ init =
 -- UPDATE
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Shared.Model -> Msg -> Model -> ( Model, Cmd Msg )
+update shared msg model =
     case msg of
         -- each case should be one line or call a function in Update file
         TimeChanged time ->
@@ -134,7 +135,11 @@ update msg model =
             model |> useProject project
 
         DeleteProject project ->
-            model |> deleteProject project
+            if shared.isDev || project.storage /= Storage.Repository then
+                model |> deleteProject project
+
+            else
+                ( model, Ports.toastWarning "Repository projects can only be removed on development machines" )
 
         ChangedSearch search ->
             ( { model | search = search }, Cmd.none )

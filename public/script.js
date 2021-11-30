@@ -4,7 +4,8 @@ window.addEventListener('load', function () {
     const skipAnalytics = !!JSON.parse(localStorage.getItem('skip-analytics'))
     const analytics = initAnalytics(isProd && !skipAnalytics)
     const errorTracking = initErrorTracking(isProd)
-    const app = Elm.Main.init()
+    const flags = { isDev: isDev };
+    const app = Elm.Main.init({ flags });
 
 
     /* PWA service worker */
@@ -101,6 +102,7 @@ window.addEventListener('load', function () {
                 '</div>'
             toastContainer.insertAdjacentHTML('beforeend', html)
             bootstrap.Toast.getOrCreateInstance(getElementById(toastId)).show()
+            return toastId
         } else {
             console.warn("Can't show toast, container not present", toast)
         }
@@ -113,7 +115,16 @@ window.addEventListener('load', function () {
             .map(key => [key.replace(projectPrefix, ''), JSON.parse(localStorage.getItem(key))])
         sendToElm({ kind: 'GotProjects', projects: values })
     }
+    let saveProjectToastId = null;
     function saveProject(project) {
+        if (project.storage === 'repository' && !isDev) {
+            if (!saveProjectToastId) {
+                const toastId = showToast({ kind: "warning", message: "Repository projects can only be saved on a development machine." });
+                saveProjectToastId = toastId;
+            }
+            return;
+        }
+
         const key = projectPrefix + project.id
         // setting dates should be done in Elm but can't find how to run a Task before calling a Port
         const now = Date.now()
@@ -296,6 +307,10 @@ window.addEventListener('load', function () {
         activateTooltipsAndPopovers()
     })
     window.addEventListener('hidden.bs.toast', e => {
+        if (saveProjectToastId && e.target.id === saveProjectToastId) {
+            saveProjectToastId = null;
+        }
+
         const toast = getElementById(e.target.id)
         toast.parentNode.removeChild(toast)
     })
