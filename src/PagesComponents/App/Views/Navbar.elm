@@ -23,6 +23,7 @@ import Models.Project.Storage as Storage
 import Models.Project.Table exposing (Table)
 import Models.Project.TableId as TableId exposing (TableId)
 import PagesComponents.App.Models exposing (FindPathMsg(..), LayoutMsg(..), Msg(..), Search, VirtualRelation, VirtualRelationMsg(..))
+import Time
 import Tracking exposing (events)
 
 
@@ -106,7 +107,8 @@ viewTitle storedProjects project =
                     , ul [ class "dropdown-menu", ariaLabelledby conf.ids.navProjectDropdown ]
                         (intersperse (li [] [ hr [ class "dropdown-divider" ] [] ])
                             [ storedProjects
-                                |> List.filter (\p -> p.name /= project.name)
+                                |> List.filter (\p -> p.id /= project.id)
+                                |> List.sortBy (\p -> p.name ++ String.fromInt (Time.posixToMillis p.updatedAt))
                                 |> List.map (\p -> li [] [ button [ type_ "button", class "dropdown-item", onClick (UseProject p) ] [ Storage.viewLabel p.storage, text p.name ] ])
                             , [ li [] [ button [ type_ "button", class "dropdown-item", onClick ChangeProject ] [ text "Move to project..." ] ] ]
                             ]
