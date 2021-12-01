@@ -147,7 +147,7 @@ endCopyToLocalStorage now project newId model =
         updatedProject =
             { project | storage = Storage.LocalStorage, id = newId, createdAt = now }
     in
-    ( { model | project = Just updatedProject, storedProjects = updatedProject :: model.storedProjects }, saveProject updatedProject )
+    loadProject events.loadProject model ( [], Just updatedProject )
 
 
 upsertProjectToStoredProjects : Maybe Project -> List Project -> List Project
