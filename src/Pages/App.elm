@@ -145,7 +145,36 @@ update shared msg model =
             ( { model | search = search }, Cmd.none )
 
         SelectTable id ctrl ->
-            ( model |> setCurrentLayout (setTables (List.map (\t -> { t | selected = B.cond (t.id == id) (not t.selected) (B.cond ctrl t.selected False) }))), Cmd.none )
+            let
+                setTableSelected t value =
+                    if t.selected /= value then
+                        { t | selected = value }
+
+                    else
+                        t
+
+                updateTable t =
+                    if t.id /= id then
+                        setTableSelected t (ctrl && t.selected)
+
+                    else if ctrl then
+                        setTableSelected t (not t.selected)
+
+                    else if not t.selected then
+                        setTableSelected t True
+
+                    else
+                        t
+
+                updateTables tables =
+                    if not ctrl && List.any (\t -> t.id == id && t.selected) tables then
+                        -- Clicking on a selected table without control should keep the current state
+                        tables
+
+                    else
+                        List.map updateTable tables
+            in
+            ( model |> setCurrentLayout (setTables updateTables), Cmd.none )
 
         SelectAllTables ->
             ( model |> setCurrentLayout (setTables (List.map (\t -> { t | selected = True }))), Cmd.none )
