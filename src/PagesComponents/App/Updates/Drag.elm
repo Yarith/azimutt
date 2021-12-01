@@ -29,38 +29,49 @@ type alias Model x =
     }
 
 
-dragStart : DragId -> Position -> Model x -> ( Model x, Cmd Msg )
-dragStart id pos model =
+type alias Ctrl =
+    Bool
+
+
+dragStart : DragId -> Ctrl -> Position -> Model x -> ( Model x, Cmd Msg )
+dragStart id ctrl pos model =
     model.dragState
         |> M.mapOrElse (\_ -> ( model, Cmd.none {- toastInfo ("Can't drag " ++ id ++ ", already dragging " ++ ds.id) -} ))
-            ( model |> dragAction { id = id, init = pos, last = pos, delta = pos |> Position.diff pos |> Delta.fromTuple }, Cmd.none )
+            ( model |> dragAction ctrl { id = id, init = pos, last = pos, delta = pos |> Position.diff pos |> Delta.fromTuple }, Cmd.none )
 
 
-dragMove : Position -> Model x -> ( Model x, Cmd Msg )
-dragMove pos model =
+dragMove : Ctrl -> Position -> Model x -> ( Model x, Cmd Msg )
+dragMove ctrl pos model =
     model.dragState
-        |> M.mapOrElse (\ds -> ( model |> dragAction { ds | last = pos, delta = pos |> Position.diff ds.last |> Delta.fromTuple }, Cmd.none ))
+        |> M.mapOrElse (\ds -> ( model |> dragAction ctrl { ds | last = pos, delta = pos |> Position.diff ds.last |> Delta.fromTuple }, Cmd.none ))
             (badDrag "dragMove" model)
 
 
-dragEnd : Position -> Model x -> ( Model x, Cmd Msg )
-dragEnd _ model =
+dragEnd : Ctrl -> Position -> Model x -> ( Model x, Cmd Msg )
+dragEnd _ _ model =
     model.dragState
         |> M.mapOrElse (\_ -> ( { model | dragState = Nothing, selection = Nothing }, Cmd.none ))
             (badDrag "dragEnd" model)
 
 
-dragAction : DragState -> Model x -> Model x
-dragAction dragState model =
+dragAction : Ctrl -> DragState -> Model x -> Model x
+dragAction ctrl dragState model =
     case ( model.cursorMode, dragState.id, model.project |> M.mapOrElse (.layout >> .canvas) (CanvasProps (Position 0 0) 1) ) of
         ( Select, "erd", canvas ) ->
             let
                 area : Area
                 area =
                     computeSelectedArea model.domInfos canvas dragState
+
+                updateTable t =
+                    if t.selected && ctrl then
+                        t
+
+                    else
+                        { t | selected = overlap area (tableArea t model.domInfos) }
             in
             { model | dragState = Just dragState, selection = Just area }
-                |> setCurrentLayout (setTables (List.map (\t -> { t | selected = overlap area (tableArea t model.domInfos) })))
+                |> setCurrentLayout (setTables (List.map updateTable))
 
         ( Select, id, canvas ) ->
             let

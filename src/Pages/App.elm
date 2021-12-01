@@ -235,14 +235,14 @@ update shared msg model =
         ResetCanvas ->
             ( model |> setProject resetCanvas, click conf.ids.searchInput )
 
-        DragStart id pos ->
-            model |> dragStart id pos
+        DragStart id ctrl pos ->
+            model |> dragStart id ctrl pos
 
-        DragMove pos ->
-            model |> dragMove pos
+        DragMove ctrl pos ->
+            model |> dragMove ctrl pos
 
-        DragEnd pos ->
-            model |> dragEnd pos
+        DragEnd ctrl pos ->
+            model |> dragEnd ctrl pos
 
         CursorMode mode ->
             ( { model | cursorMode = mode }, Cmd.none )
@@ -294,8 +294,8 @@ dragSubscriptions drag =
             []
 
         Just _ ->
-            [ Browser.Events.onMouseMove (Decode.map (.pagePos >> Position.fromTuple >> DragMove) Mouse.eventDecoder)
-            , Browser.Events.onMouseUp (Decode.map (.pagePos >> Position.fromTuple >> DragEnd) Mouse.eventDecoder)
+            [ Browser.Events.onMouseMove (Decode.map (\x -> x.pagePos |> Position.fromTuple |> DragMove x.keys.ctrl) Mouse.eventDecoder)
+            , Browser.Events.onMouseUp (Decode.map (\x -> x.pagePos |> Position.fromTuple |> DragEnd x.keys.ctrl) Mouse.eventDecoder)
             ]
 
 

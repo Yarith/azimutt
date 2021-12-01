@@ -63,6 +63,10 @@ type alias DragState =
     { id : DragId, init : Position, last : Position, delta : Delta }
 
 
+type alias Ctrl =
+    Bool
+
+
 type Msg
     = TimeChanged Time.Posix
     | ZoneChanged Time.Zone
@@ -98,9 +102,9 @@ type Msg
     | Zoom ZoomDelta
     | FitContent
     | ResetCanvas
-    | DragStart DragId Position
-    | DragMove Position
-    | DragEnd Position
+    | DragStart DragId Ctrl Position
+    | DragMove Ctrl Position
+    | DragEnd Ctrl Position
     | CursorMode CursorMode
     | FindPathMsg FindPathMsg
     | VirtualRelationMsg VirtualRelationMsg

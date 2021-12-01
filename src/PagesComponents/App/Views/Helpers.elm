@@ -28,7 +28,7 @@ size s =
 
 onDrag : DragId -> Attribute Msg
 onDrag id =
-    Mouse.onDown (.pagePos >> Position.fromTuple >> DragStart id)
+    Mouse.onDown (\x -> DragStart id x.keys.ctrl (Position.fromTuple x.pagePos))
 
 
 sizeAttr : Size -> Attribute msg
