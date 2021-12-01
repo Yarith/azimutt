@@ -144,22 +144,41 @@ endCopyToLocalStorage now project newId model =
     ( { model | project = Just updatedProject, storedProjects = updatedProject :: model.storedProjects }, saveProject updatedProject )
 
 
-putCurrentOpenProjectToStoredProjects : Model -> List Project
-putCurrentOpenProjectToStoredProjects model =
-    case model.project of
+upsertProjectToStoredProjects : Maybe Project -> List Project -> List Project
+upsertProjectToStoredProjects mproj storedProjects =
+    case mproj of
         Nothing ->
-            model.storedProjects
+            storedProjects
 
         Just project ->
-            model.storedProjects
-                |> List.map
-                    (\sp ->
-                        if sp.id /= project.id then
-                            sp
+            case List.find (\{ id } -> id == project.id) storedProjects of
+                Nothing ->
+                    storedProjects ++ [ project ]
 
-                        else
-                            project
-                    )
+                Just foundProject ->
+                    if foundProject == project then
+                        storedProjects
+
+                    else
+                        List.map
+                            (\sp ->
+                                if sp.id /= project.id then
+                                    sp
+
+                                else
+                                    project
+                            )
+                            storedProjects
+
+
+putCurrentOpenProjectToStoredProjects : Model -> List Project
+putCurrentOpenProjectToStoredProjects model =
+    upsertProjectToStoredProjects model.project model.storedProjects
+
+
+putNewProjectToStoredProjects : Maybe Project -> List Project -> List Project
+putNewProjectToStoredProjects =
+    upsertProjectToStoredProjects
 
 
 loadProject : (Project -> TrackEvent) -> Model -> ( Errors, Maybe Project ) -> ( Model, Cmd Msg )
@@ -167,11 +186,8 @@ loadProject projectEvent model ( errors, project ) =
     ( { model
         | switch = initSwitch
         , storedProjects =
-            let
-                storedProjects =
-                    putCurrentOpenProjectToStoredProjects model
-            in
-            storedProjects |> L.appendOn (project |> M.filter (\p -> storedProjects |> List.all (\s -> s.id /= p.id))) identity
+            putCurrentOpenProjectToStoredProjects model
+                |> putNewProjectToStoredProjects project
         , project = project
         , domInfos =
             let
