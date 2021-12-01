@@ -290,6 +290,22 @@ window.addEventListener('load', function () {
 
     /* Bootstrap helpers */
 
+    // bring table to front while dropdown is visible
+    function updateTableDropdownOpen(target, state) {
+        if (target instanceof HTMLDivElement) {
+            const table = findParent(target, x => x.classList && x.classList.contains("erd-table"));
+            if (table) {
+                if (state) {
+                    table.classList.add("dropdown-open");
+                } else {
+                    table.classList.remove("dropdown-open");
+                }
+            }
+        }
+    }
+    window.addEventListener('show.bs.dropdown', e => updateTableDropdownOpen(e.target, true));
+    window.addEventListener('hide.bs.dropdown', e => updateTableDropdownOpen(e.target, false));
+
     // hide tooltip on click (avoid orphan tooltips when element is removed)
     // cf https://getbootstrap.com/docs/5.0/components/tooltips/: "Tooltips must be hidden before their corresponding elements have been removed from the DOM."
     let currentTooltip = null

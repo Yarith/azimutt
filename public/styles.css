@@ -92,6 +92,8 @@
     cursor: pointer;
 }
 
+.erd-table.dropdown-open { z-index: 100000 !important; }
+
 .erd-table .header { border-top-color: var(--tw-blueGray); }
 .erd-table.gray .header { border-top-color: var(--tw-blueGray); }
 .erd-table.red .header { border-top-color: var(--tw-red); }
