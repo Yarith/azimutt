@@ -12,6 +12,7 @@ import Libs.Models.HtmlId exposing (HtmlId)
 import Libs.String as S
 import Libs.Task as T
 import List.Extra as List
+import Maybe.Extra
 import Models.Project as Project exposing (Project)
 import Models.Project.ProjectId exposing (ProjectId)
 import Models.Project.ProjectName exposing (ProjectName)
@@ -101,7 +102,12 @@ useProject project model =
 
 deleteProject : Project -> Model -> ( Model, Cmd Msg )
 deleteProject project model =
-    ( { model | storedProjects = model.storedProjects |> List.filter (\p -> not (p.id == project.id)) }, Cmd.batch [ dropProject project, track (events.deleteProject project) ] )
+    ( { model
+        | storedProjects = model.storedProjects |> List.filter (\p -> not (p.id == project.id))
+        , project = model.project |> Maybe.Extra.filter (\x -> x.id /= project.id)
+      }
+    , Cmd.batch [ dropProject project, track (events.deleteProject project) ]
+    )
 
 
 moveProjectToServer : Project -> Model -> ( Model, Cmd Msg )
