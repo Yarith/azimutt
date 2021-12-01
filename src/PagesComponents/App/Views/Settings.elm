@@ -60,7 +60,7 @@ moveToRepositoryButton project =
     button
         [ type_ "button"
         , class "link ms-2"
-        , title "move project to server"
+        , title "move project to repository"
         , onClick (OpenConfirm { content = span [] [ text "Do you really want to move this project to the repository?" ], cmd = send (MoveProjectToRepository project) })
         ]
         [ viewIcon (Storage.icon Storage.Repository) ]
