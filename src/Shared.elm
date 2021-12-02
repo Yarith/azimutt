@@ -3,12 +3,17 @@ module Shared exposing
     , Model
     , Msg
     , init
+    , replaceUrlSelection
     , subscriptions
     , update
     )
 
+import Browser.Navigation
+import Gen.Route as Route exposing (Route)
 import Json.Decode as Json
+import PagesComponents.App.Models exposing (Preselect)
 import Request exposing (Request)
+import Url.Builder exposing (QueryParameter)
 
 
 type alias Flags =
@@ -20,7 +25,26 @@ type alias Model =
 
 
 type Msg
-    = NoOp
+    = PushRoute Route (List QueryParameter)
+
+
+replaceUrlSelection : Maybe Preselect -> Msg
+replaceUrlSelection preselect =
+    PushRoute Route.App <|
+        case preselect of
+            Nothing ->
+                []
+
+            Just { projectId, layoutName } ->
+                List.concat
+                    [ [ Url.Builder.string "projectId" projectId ]
+                    , case layoutName of
+                        Just value ->
+                            [ Url.Builder.string "layoutName" value ]
+
+                        Nothing ->
+                            []
+                    ]
 
 
 decodeIsDev : Flags -> Bool
@@ -35,10 +59,12 @@ init _ flags =
 
 
 update : Request -> Msg -> Model -> ( Model, Cmd Msg )
-update _ msg model =
+update { key } msg model =
     case msg of
-        NoOp ->
-            ( model, Cmd.none )
+        PushRoute route query ->
+            ( model
+            , Browser.Navigation.replaceUrl key (Route.toHref route ++ Url.Builder.toQuery query)
+            )
 
 
 subscriptions : Request -> Model -> Sub Msg

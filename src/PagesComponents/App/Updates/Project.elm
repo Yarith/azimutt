@@ -1,9 +1,10 @@
-module PagesComponents.App.Updates.Project exposing (beginCopyToLocalStorage, createProject, deleteProject, endCopyToLocalStorage, loadProject, moveProjectToRepository, moveProjectToServer, updateProject, useProject)
+module PagesComponents.App.Updates.Project exposing (beginCopyToLocalStorage, createProject, deleteProject, endCopyToLocalStorage, loadProject, moveProjectToRepository, moveProjectToServer, updateProject, updateProjectUrl, useProject, useProjects)
 
 import Conf exposing (conf)
 import DataSources.SqlParser.FileParser exposing (parseSchema)
 import DataSources.SqlParser.ProjectAdapter exposing (buildSourceFromSql)
 import Dict
+import Effect exposing (Effect)
 import Libs.DomInfo exposing (DomInfo)
 import Libs.List as L
 import Libs.Maybe as M
@@ -12,7 +13,7 @@ import Libs.Models.HtmlId exposing (HtmlId)
 import Libs.String as S
 import Libs.Task as T
 import List.Extra as List
-import Maybe.Extra
+import Maybe.Extra as Maybe
 import Models.Project as Project exposing (Project)
 import Models.Project.ProjectId exposing (ProjectId)
 import Models.Project.ProjectName exposing (ProjectName)
@@ -21,13 +22,21 @@ import Models.Project.Storage as Storage
 import Models.Project.TableId as TableId
 import Models.SourceInfo exposing (SourceInfo)
 import PagesComponents.App.Models exposing (Errors, Model, Msg(..), initSwitch)
-import Ports exposing (activateTooltipsAndPopovers, click, dropProject, hideModal, hideOffcanvas, observeTablesSize, saveProject, toastError, toastInfo, track, trackError)
+import Ports exposing (activateTooltipsAndPopovers, click, dropProject, hideModal, hideOffcanvas, observeTablesSize, saveProject, showModal, toastError, toastInfo, track, trackError)
 import Set
+import Shared
 import Time
 import Tracking exposing (events)
 
 
-createProject : ProjectId -> SourceInfo -> FileContent -> Model -> ( Model, Cmd Msg )
+updateProjectUrl : Project -> Effect Msg
+updateProjectUrl p =
+    Just { projectId = p.id, layoutName = p.usedLayout }
+        |> Shared.replaceUrlSelection
+        |> Effect.fromShared
+
+
+createProject : ProjectId -> SourceInfo -> FileContent -> Model -> ( Model, Effect Msg )
 createProject projectId sourceInfo content model =
     let
         takenNames : List ProjectName
@@ -49,7 +58,7 @@ createProject projectId sourceInfo content model =
         |> loadProject events.createProject model
 
 
-updateProject : SourceInfo -> FileContent -> Project -> ( Project, Cmd Msg )
+updateProject : SourceInfo -> FileContent -> Project -> ( Project, Effect Msg )
 updateProject sourceInfo content project =
     let
         path : String
@@ -79,69 +88,136 @@ updateProject sourceInfo content project =
         )
             |> (\( errors, ( updatedProject, event, message ) ) ->
                     ( updatedProject
-                    , Cmd.batch
-                        ((errors |> List.map toastError)
-                            ++ (errors |> List.map (trackError "parse-schema"))
-                            ++ [ toastInfo message
-                               , hideOffcanvas conf.ids.settings
-                               , saveProject updatedProject
-                               , track event
-                               ]
-                        )
+                    , Effect.batch
+                        [ Effect.fromCmd <|
+                            Cmd.batch
+                                ((errors |> List.map toastError)
+                                    ++ (errors |> List.map (trackError "parse-schema"))
+                                    ++ [ toastInfo message
+                                       , hideOffcanvas conf.ids.settings
+                                       , saveProject updatedProject
+                                       , track event
+                                       ]
+                                )
+                        , updateProjectUrl updatedProject
+                        ]
                     )
                )
 
     else
-        ( project, toastError ("Invalid file (" ++ path ++ "), expected .sql") )
+        ( project, Effect.fromCmd <| toastError ("Invalid file (" ++ path ++ "), expected .sql") )
 
 
-useProject : Project -> Model -> ( Model, Cmd Msg )
+useProject : Project -> Model -> ( Model, Effect Msg )
 useProject project model =
     ( [], Just project ) |> loadProject events.loadProject model
 
 
-deleteProject : Project -> Model -> ( Model, Cmd Msg )
+useProjects : List Project -> Model -> ( Model, Effect Msg )
+useProjects projects model =
+    case model.preselect of
+        Nothing ->
+            ( { model | storedProjects = projects }
+            , if Maybe.isNothing model.project then
+                Effect.fromCmd <| showModal conf.ids.projectSwitchModal
+
+              else
+                Effect.none
+            )
+
+        Just preselect ->
+            let
+                project =
+                    projects
+                        |> List.find (\x -> x.id == preselect.projectId)
+                        |> Maybe.map
+                            (\proj ->
+                                preselect.layoutName
+                                    |> Maybe.andThen
+                                        (\layoutName ->
+                                            Dict.get layoutName proj.layouts
+                                                |> Maybe.map (\layout -> { proj | layout = layout, usedLayout = Just layoutName })
+                                        )
+                                    |> Maybe.withDefault proj
+                            )
+            in
+            case project of
+                Just proj ->
+                    useProject proj
+                        { model
+                            | storedProjects = projects
+                            , preselect = Nothing
+                        }
+
+                Nothing ->
+                    ( { model
+                        | storedProjects = projects
+                        , preselect = Nothing
+                        , project = Nothing
+                      }
+                    , if Maybe.isNothing model.project then
+                        Effect.fromCmd <| showModal conf.ids.projectSwitchModal
+
+                      else
+                        Effect.none
+                    )
+
+
+deleteProject : Project -> Model -> ( Model, Effect Msg )
 deleteProject project model =
     ( { model
         | storedProjects = model.storedProjects |> List.filter (\p -> not (p.id == project.id))
-        , project = model.project |> Maybe.Extra.filter (\x -> x.id /= project.id)
+        , project = model.project |> Maybe.filter (\x -> x.id /= project.id)
       }
-    , Cmd.batch [ dropProject project, track (events.deleteProject project) ]
+    , Effect.batch
+        [ Effect.fromCmd <|
+            Cmd.batch
+                [ dropProject project
+                , track (events.deleteProject project)
+                ]
+        , Effect.fromShared <| Shared.replaceUrlSelection Nothing
+        ]
     )
 
 
-moveProjectToServer : Project -> Model -> ( Model, Cmd Msg )
+moveProjectToServer : Project -> Model -> ( Model, Effect Msg )
 moveProjectToServer project model =
     if project.storage /= Storage.LocalStorage then
-        ( model, Cmd.none )
+        ( model, Effect.none )
 
     else
         let
             updatedProject =
                 { project | storage = Storage.Server }
         in
-        ( { model | project = Just updatedProject }, saveProject updatedProject )
+        ( { model | project = Just updatedProject }
+        , Effect.fromCmd <| saveProject updatedProject
+        )
 
 
-moveProjectToRepository : Project -> Model -> ( Model, Cmd Msg )
+moveProjectToRepository : Project -> Model -> ( Model, Effect Msg )
 moveProjectToRepository project model =
     if project.storage == Storage.Repository then
-        ( model, Cmd.none )
+        ( model, Effect.none )
 
     else
         let
             updatedProject =
                 { project | storage = Storage.Repository }
         in
-        ( { model | project = Just updatedProject }, saveProject updatedProject )
+        ( { model | project = Just updatedProject }
+        , Effect.fromCmd <| saveProject updatedProject
+        )
 
 
-beginCopyToLocalStorage : Project -> Model -> ( Model, Cmd Msg )
+beginCopyToLocalStorage : Project -> Model -> ( Model, Effect Msg )
 beginCopyToLocalStorage project model =
-    ( { model | project = Just project }, Cmd.batch [ saveProject project, Ports.getCloneProjectId project.id ] )
+    ( { model | project = Just project }
+    , Effect.fromCmd <| Cmd.batch [ saveProject project, Ports.getCloneProjectId project.id ]
+    )
 
 
-endCopyToLocalStorage : Time.Posix -> Project -> ProjectId -> Model -> ( Model, Cmd Msg )
+endCopyToLocalStorage : Time.Posix -> Project -> ProjectId -> Model -> ( Model, Effect Msg )
 endCopyToLocalStorage now project newId model =
     let
         updatedProject =
@@ -187,7 +263,7 @@ putNewProjectToStoredProjects =
     upsertProjectToStoredProjects
 
 
-loadProject : (Project -> TrackEvent) -> Model -> ( Errors, Maybe Project ) -> ( Model, Cmd Msg )
+loadProject : (Project -> TrackEvent) -> Model -> ( Errors, Maybe Project ) -> ( Model, Effect Msg )
 loadProject projectEvent model ( errors, project ) =
     ( { model
         | switch = initSwitch
@@ -215,32 +291,36 @@ loadProject projectEvent model ( errors, project ) =
             model.domInfos
                 |> Dict.filter domInfoFilter
       }
-    , Cmd.batch
-        ((errors |> List.map toastError)
-            ++ (errors |> List.map (trackError "parse-project"))
+    , Effect.batch
+        ((errors |> List.map (toastError >> Effect.fromCmd))
+            ++ (errors |> List.map (trackError "parse-project" >> Effect.fromCmd))
             ++ (project
                     |> M.mapOrElse
                         (\p ->
-                            [ if not (p.layout.tables |> List.isEmpty) then
-                                observeTablesSize (p.layout.tables |> List.map .id)
+                            List.concat
+                                [ List.map Effect.fromCmd
+                                    [ if not (p.layout.tables |> List.isEmpty) then
+                                        observeTablesSize (p.layout.tables |> List.map .id)
 
-                              else if Dict.size p.tables < 10 then
-                                T.send ShowAllTables
+                                      else if Dict.size p.tables < 10 then
+                                        T.send ShowAllTables
 
-                              else
-                                click conf.ids.searchInput
-                            , toastInfo ("<b>" ++ p.name ++ "</b> loaded.<br>Use the search bar to explore it")
-                            , hideModal conf.ids.projectSwitchModal
-                            , case model.project of
-                                Just prevproj ->
-                                    saveProject prevproj
+                                      else
+                                        click conf.ids.searchInput
+                                    , toastInfo ("<b>" ++ p.name ++ "</b> loaded.<br>Use the search bar to explore it")
+                                    , hideModal conf.ids.projectSwitchModal
+                                    , case model.project of
+                                        Just prevproj ->
+                                            saveProject prevproj
 
-                                Nothing ->
-                                    Cmd.none
-                            , saveProject p
-                            , activateTooltipsAndPopovers
-                            , track (projectEvent p)
-                            ]
+                                        Nothing ->
+                                            Cmd.none
+                                    , saveProject p
+                                    , activateTooltipsAndPopovers
+                                    , track (projectEvent p)
+                                    ]
+                                , [ updateProjectUrl p ]
+                                ]
                         )
                         []
                )

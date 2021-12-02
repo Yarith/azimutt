@@ -1,4 +1,4 @@
-module PagesComponents.App.Models exposing (Confirm, CursorMode(..), DragId, DragState, Error, Errors, FindPathMsg(..), Hover, LayoutMsg(..), Model, Msg(..), Search, SettingsMsg(..), SourceMsg(..), Switch, TimeInfo, VirtualRelation, VirtualRelationMsg(..), initConfirm, initHover, initSwitch, initTimeInfo)
+module PagesComponents.App.Models exposing (Confirm, CursorMode(..), DragId, DragState, Error, Errors, FindPathMsg(..), Hover, LayoutMsg(..), Model, Msg(..), Preselect, Search, SettingsMsg(..), SourceMsg(..), Switch, TimeInfo, VirtualRelation, VirtualRelationMsg(..), initConfirm, initHover, initSwitch, initTimeInfo, parsePreselect)
 
 import Dict exposing (Dict)
 import FileValue exposing (File)
@@ -34,6 +34,7 @@ import Time
 
 type alias Model =
     { time : TimeInfo
+    , preselect : Maybe Preselect
     , switch : Switch
     , storedProjects : List Project
     , project : Maybe Project
@@ -48,6 +49,25 @@ type alias Model =
     , dragState : Maybe DragState
     , hover : Hover
     }
+
+
+type alias Preselect =
+    { projectId : ProjectId
+    , layoutName : Maybe LayoutName
+    }
+
+
+parsePreselectHelp : Dict String String -> ProjectId -> Preselect
+parsePreselectHelp query projectId =
+    { projectId = projectId
+    , layoutName = Dict.get "layoutName" query
+    }
+
+
+parsePreselect : Dict String String -> Maybe Preselect
+parsePreselect query =
+    Dict.get "projectId" query
+        |> Maybe.map (parsePreselectHelp query)
 
 
 type alias VirtualRelation =

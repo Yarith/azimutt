@@ -2,6 +2,7 @@ module PagesComponents.App.Updates.PortMsg exposing (handlePortMsg)
 
 import Array
 import Dict
+import Effect exposing (Effect)
 import FileValue exposing (File)
 import Libs.List as L
 import Libs.Models exposing (FileContent)
@@ -17,32 +18,32 @@ import PagesComponents.App.Updates.Hotkey exposing (handleHotkey)
 import Ports exposing (JsMsg(..), toastError, trackJsonError)
 
 
-handlePortMsg : JsMsg -> Model -> Cmd Msg
+handlePortMsg : JsMsg -> Model -> Effect Msg
 handlePortMsg msg model =
     case msg of
         GotSizes sizes ->
-            send (SizesChanged sizes)
+            Effect.fromCmd <| send (SizesChanged sizes)
 
         GotProjects ( errors, projects ) ->
-            Cmd.batch (send (ProjectsLoaded projects) :: (errors |> List.concatMap (\( name, err ) -> [ toastError ("Unable to read project <b>" ++ name ++ "</b>:<br>" ++ decodeErrorToHtml err), trackJsonError "decode-project" err ])))
+            Effect.fromCmd <| Cmd.batch (send (ProjectsLoaded projects) :: (errors |> List.concatMap (\( name, err ) -> [ toastError ("Unable to read project <b>" ++ name ++ "</b>:<br>" ++ decodeErrorToHtml err), trackJsonError "decode-project" err ])))
 
         GotLocalFile now projectId sourceId file content ->
-            send (SourceMsg (FileLoaded projectId (SourceInfo sourceId (lastSegment file.name) (localSource file) True Nothing now now) content))
+            Effect.fromCmd <| send (SourceMsg (FileLoaded projectId (SourceInfo sourceId (lastSegment file.name) (localSource file) True Nothing now now) content))
 
         GotRemoteFile now projectId sourceId url content sample ->
-            send (SourceMsg (FileLoaded projectId (SourceInfo sourceId (lastSegment url) (remoteSource url content) True sample now now) content))
+            Effect.fromCmd <| send (SourceMsg (FileLoaded projectId (SourceInfo sourceId (lastSegment url) (remoteSource url content) True sample now now) content))
 
         GotSourceId now sourceId src ref ->
-            send (SourceMsg (CreateSource (Source sourceId "User" UserDefined Array.empty Dict.empty [ Relation.virtual src ref sourceId ] True Nothing now now) "Relation added to newly create <b>User</b> source."))
+            Effect.fromCmd <| send (SourceMsg (CreateSource (Source sourceId "User" UserDefined Array.empty Dict.empty [ Relation.virtual src ref sourceId ] True Nothing now now) "Relation added to newly create <b>User</b> source."))
 
         GotCloneProjectId now srcId newId ->
-            send (EndCopyToLocalStorage now srcId newId)
+            Effect.fromCmd <| send (EndCopyToLocalStorage now srcId newId)
 
         GotHotkey hotkey ->
-            Cmd.batch (handleHotkey model hotkey)
+            Effect.fromCmd <| Cmd.batch (handleHotkey model hotkey)
 
         Error err ->
-            Cmd.batch [ toastError ("Unable to decode JavaScript message:<br>" ++ decodeErrorToHtml err), trackJsonError "js-message" err ]
+            Effect.fromCmd <| Cmd.batch [ toastError ("Unable to decode JavaScript message:<br>" ++ decodeErrorToHtml err), trackJsonError "js-message" err ]
 
 
 localSource : File -> SourceKind

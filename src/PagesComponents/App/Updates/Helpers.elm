@@ -1,5 +1,6 @@
 module PagesComponents.App.Updates.Helpers exposing (decodeErrorToHtml, setCanvas, setCurrentLayout, setLayout, setLayouts, setPosition, setProject, setProjectWithCmd, setRelations, setSettings, setSwitch, setTableInList, setTableList, setTables, setTime)
 
+import Effect exposing (Effect)
 import Json.Decode as Decode
 import Libs.Bool as B
 import Libs.Delta exposing (Delta)
@@ -23,9 +24,9 @@ setProject transform item =
     { item | project = item.project |> Maybe.map transform }
 
 
-setProjectWithCmd : (p -> ( p, Cmd msg )) -> { item | project : Maybe p } -> ( { item | project : Maybe p }, Cmd msg )
+setProjectWithCmd : (p -> ( p, Effect msg )) -> { item | project : Maybe p } -> ( { item | project : Maybe p }, Effect msg )
 setProjectWithCmd transform item =
-    item.project |> M.mapOrElse (\p -> p |> transform |> Tuple.mapFirst (\project -> { item | project = Just project })) ( item, Cmd.none )
+    item.project |> M.mapOrElse (\p -> p |> transform |> Tuple.mapFirst (\project -> { item | project = Just project })) ( item, Effect.none )
 
 
 setRelations : (r -> r) -> { item | relations : r } -> { item | relations : r }

@@ -2,6 +2,7 @@ module PagesComponents.App.Updates.Drag exposing (Model, dragEnd, dragMove, drag
 
 import Conf exposing (conf)
 import Dict exposing (Dict)
+import Effect exposing (Effect)
 import Libs.Area as Area exposing (Area, overlap)
 import Libs.Delta as Delta
 import Libs.DomInfo exposing (DomInfo)
@@ -33,24 +34,24 @@ type alias Ctrl =
     Bool
 
 
-dragStart : DragId -> Ctrl -> Position -> Model x -> ( Model x, Cmd Msg )
+dragStart : DragId -> Ctrl -> Position -> Model x -> ( Model x, Effect Msg )
 dragStart id ctrl pos model =
     model.dragState
-        |> M.mapOrElse (\_ -> ( model, Cmd.none {- toastInfo ("Can't drag " ++ id ++ ", already dragging " ++ ds.id) -} ))
-            ( model |> dragAction ctrl { id = id, init = pos, last = pos, delta = pos |> Position.diff pos |> Delta.fromTuple }, Cmd.none )
+        |> M.mapOrElse (\_ -> ( model, Effect.none {- toastInfo ("Can't drag " ++ id ++ ", already dragging " ++ ds.id) -} ))
+            ( model |> dragAction ctrl { id = id, init = pos, last = pos, delta = pos |> Position.diff pos |> Delta.fromTuple }, Effect.none )
 
 
-dragMove : Ctrl -> Position -> Model x -> ( Model x, Cmd Msg )
+dragMove : Ctrl -> Position -> Model x -> ( Model x, Effect Msg )
 dragMove ctrl pos model =
     model.dragState
-        |> M.mapOrElse (\ds -> ( model |> dragAction ctrl { ds | last = pos, delta = pos |> Position.diff ds.last |> Delta.fromTuple }, Cmd.none ))
+        |> M.mapOrElse (\ds -> ( model |> dragAction ctrl { ds | last = pos, delta = pos |> Position.diff ds.last |> Delta.fromTuple }, Effect.none ))
             (badDrag "dragMove" model)
 
 
-dragEnd : Ctrl -> Position -> Model x -> ( Model x, Cmd Msg )
+dragEnd : Ctrl -> Position -> Model x -> ( Model x, Effect Msg )
 dragEnd _ _ model =
     model.dragState
-        |> M.mapOrElse (\_ -> ( { model | dragState = Nothing, selection = Nothing }, Cmd.none ))
+        |> M.mapOrElse (\_ -> ( { model | dragState = Nothing, selection = Nothing }, Effect.none ))
             (badDrag "dragEnd" model)
 
 
@@ -118,6 +119,6 @@ tableArea table domInfos =
             { position = Position 0 0, size = Size 0 0 }
 
 
-badDrag : String -> Model x -> ( Model x, Cmd Msg )
+badDrag : String -> Model x -> ( Model x, Effect Msg )
 badDrag kind model =
-    ( model, toastInfo ("Can't " ++ kind ++ ", not in drag state") )
+    ( model, Effect.fromCmd <| toastInfo ("Can't " ++ kind ++ ", not in drag state") )

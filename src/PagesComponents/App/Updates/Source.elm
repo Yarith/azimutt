@@ -2,6 +2,7 @@ module PagesComponents.App.Updates.Source exposing (handleSource)
 
 import Conf exposing (schemaSamples)
 import Dict
+import Effect exposing (Effect)
 import Libs.Bool as B
 import Libs.Maybe as M
 import Models.Project as Project
@@ -11,23 +12,29 @@ import PagesComponents.App.Updates.Project exposing (createProject, updateProjec
 import Ports exposing (observeTablesSize, readLocalFile, readRemoteFile, toastError, toastInfo)
 
 
-handleSource : SourceMsg -> Model -> ( Model, Cmd Msg )
+handleSource : SourceMsg -> Model -> ( Model, Effect Msg )
 handleSource msg model =
     case msg of
         FileDragOver _ _ ->
-            ( model, Cmd.none )
+            ( model, Effect.none )
 
         FileDragLeave ->
-            ( model, Cmd.none )
+            ( model, Effect.none )
 
         LoadLocalFile project source file ->
-            ( model |> setSwitch (\s -> { s | loading = True }), readLocalFile project source file )
+            ( model |> setSwitch (\s -> { s | loading = True }), Effect.fromCmd <| readLocalFile project source file )
 
         LoadRemoteFile project source url ->
-            ( model, readRemoteFile project source url Nothing )
+            ( model, Effect.fromCmd <| readRemoteFile project source url Nothing )
 
         LoadSample name ->
-            ( model, schemaSamples |> Dict.get name |> M.mapOrElse (\( _, url ) -> readRemoteFile Nothing Nothing url (Just name)) (toastError ("Sample <b>" ++ name ++ "</b> not found")) )
+            ( model
+            , schemaSamples
+                |> Dict.get name
+                |> M.mapOrElse (\( _, url ) -> readRemoteFile Nothing Nothing url (Just name))
+                    (toastError ("Sample <b>" ++ name ++ "</b> not found"))
+                |> Effect.fromCmd
+            )
 
         FileLoaded projectId sourceInfo content ->
             model.project
@@ -38,14 +45,15 @@ handleSource msg model =
 
         ToggleSource source ->
             ( model |> setProject (Project.updateSource source.id (\s -> { s | enabled = not s.enabled }))
-            , Cmd.batch
-                [ observeTablesSize (model.project |> M.mapOrElse (\p -> p.layout.tables |> List.map .id) [])
-                , toastInfo ("Source <b>" ++ source.name ++ "</b> set to " ++ B.cond source.enabled "hidden" "visible" ++ ".")
-                ]
+            , Effect.fromCmd <|
+                Cmd.batch
+                    [ observeTablesSize (model.project |> M.mapOrElse (\p -> p.layout.tables |> List.map .id) [])
+                    , toastInfo ("Source <b>" ++ source.name ++ "</b> set to " ++ B.cond source.enabled "hidden" "visible" ++ ".")
+                    ]
             )
 
         CreateSource source message ->
-            ( model |> setProject (Project.addSource source), toastInfo message )
+            ( model |> setProject (Project.addSource source), Effect.fromCmd <| toastInfo message )
 
         DeleteSource source ->
-            ( model |> setProject (Project.deleteSource source.id), toastInfo ("Source <b>" ++ source.name ++ "</b> has been deleted from project.") )
+            ( model |> setProject (Project.deleteSource source.id), Effect.fromCmd <| toastInfo ("Source <b>" ++ source.name ++ "</b> has been deleted from project.") )

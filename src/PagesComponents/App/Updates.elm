@@ -2,6 +2,7 @@ module PagesComponents.App.Updates exposing (moveTable, removeElement, updateSiz
 
 import Conf exposing (conf)
 import Dict
+import Effect exposing (Effect)
 import Libs.Bool as B
 import Libs.List as L
 import Libs.Maybe as M
@@ -18,9 +19,9 @@ import PagesComponents.App.Models exposing (CursorMode(..), Hover, Model, Msg(..
 import Ports exposing (toastInfo)
 
 
-updateSizes : List SizeChange -> Model -> ( Model, Cmd Msg )
+updateSizes : List SizeChange -> Model -> ( Model, Effect Msg )
 updateSizes sizeChanges model =
-    ( sizeChanges |> List.foldl updateSize model, Cmd.batch (sizeChanges |> List.filterMap (initializeTableOnFirstSize model)) )
+    ( sizeChanges |> List.foldl updateSize model, Effect.fromCmd <| Cmd.batch (sizeChanges |> List.filterMap (initializeTableOnFirstSize model)) )
 
 
 updateSize : SizeChange -> Model -> Model

@@ -1,6 +1,7 @@
 module PagesComponents.App.Updates.Settings exposing (handleSettings)
 
 import Dict
+import Effect exposing (Effect)
 import Libs.List as L
 import Libs.Maybe as M
 import Libs.Ned as Ned
@@ -17,7 +18,7 @@ import PagesComponents.App.Updates.Helpers exposing (setLayout, setProject, setP
 import Ports exposing (observeTablesSize)
 
 
-handleSettings : SettingsMsg -> Model -> ( Model, Cmd Msg )
+handleSettings : SettingsMsg -> Model -> ( Model, Effect Msg )
 handleSettings msg model =
     case msg of
         ToggleSchema schema ->
@@ -30,29 +31,29 @@ handleSettings msg model =
             model |> updateSettingsAndComputeProject (\s -> { s | removedTables = values })
 
         UpdateHiddenColumns values ->
-            ( model |> setProject (\p -> p |> setSettings (\s -> { s | hiddenColumns = values }) |> setLayout (hideColumns (ProjectSettings.isColumnHidden values) p)), Cmd.none )
+            ( model |> setProject (\p -> p |> setSettings (\s -> { s | hiddenColumns = values }) |> setLayout (hideColumns (ProjectSettings.isColumnHidden values) p)), Effect.none )
 
         UpdateColumnOrder order ->
-            ( model |> setProject (\p -> p |> setSettings (\s -> { s | columnOrder = order }) |> setLayout (sortColumns order p)), Cmd.none )
+            ( model |> setProject (\p -> p |> setSettings (\s -> { s | columnOrder = order }) |> setLayout (sortColumns order p)), Effect.none )
 
         UpdateProjectName name ->
             model |> setProjectWithCmd (updateProjectName name)
 
 
-updateProjectName : ProjectName -> Project -> ( Project, Cmd Msg )
+updateProjectName : ProjectName -> Project -> ( Project, Effect Msg )
 updateProjectName name p =
     let
         up =
             { p | name = name }
     in
-    ( up, Ports.saveProject up )
+    ( up, Effect.fromCmd <| Ports.saveProject up )
 
 
-updateSettingsAndComputeProject : (ProjectSettings -> ProjectSettings) -> Model -> ( Model, Cmd Msg )
+updateSettingsAndComputeProject : (ProjectSettings -> ProjectSettings) -> Model -> ( Model, Effect Msg )
 updateSettingsAndComputeProject transform model =
     model
         |> setProject (setSettings transform >> Project.compute)
-        |> (\m -> ( m, observeTablesSize (m.project |> M.mapOrElse (\p -> p.layout.tables |> List.map .id) []) ))
+        |> (\m -> ( m, Effect.fromCmd <| observeTablesSize (m.project |> M.mapOrElse (\p -> p.layout.tables |> List.map .id) []) ))
 
 
 hideColumns : (Column -> Bool) -> Project -> Layout -> Layout

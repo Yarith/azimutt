@@ -1,5 +1,6 @@
 module PagesComponents.App.Updates.VirtualRelation exposing (handleVirtualRelation)
 
+import Effect exposing (Effect)
 import Libs.List as L
 import Libs.Models.Position exposing (Position)
 import Models.Project as Project exposing (Project)
@@ -17,33 +18,33 @@ type alias Model x =
     }
 
 
-handleVirtualRelation : VirtualRelationMsg -> Model x -> ( Model x, Cmd Msg )
+handleVirtualRelation : VirtualRelationMsg -> Model x -> ( Model x, Effect Msg )
 handleVirtualRelation msg model =
     case msg of
         VRCreate ->
-            ( { model | virtualRelation = Just { src = Nothing, mouse = Position 0 0 } }, Cmd.none )
+            ( { model | virtualRelation = Just { src = Nothing, mouse = Position 0 0 } }, Effect.none )
 
         VRUpdate ref pos ->
             case model.virtualRelation |> Maybe.map (\{ src } -> src) of
                 Nothing ->
-                    ( model, Cmd.none )
+                    ( model, Effect.none )
 
                 Just Nothing ->
-                    ( { model | virtualRelation = Just { src = Just ref, mouse = pos } }, Cmd.none )
+                    ( { model | virtualRelation = Just { src = Just ref, mouse = pos } }, Effect.none )
 
                 Just (Just src) ->
                     case model.project |> Maybe.andThen (\p -> p.sources |> L.find (\s -> s.kind == UserDefined)) of
                         Just source ->
                             ( { model | virtualRelation = Nothing }
                                 |> setProject (Project.updateSource source.id (\s -> { s | relations = s.relations ++ [ Relation.virtual src ref source.id ] }))
-                            , toastInfo ("Relation added to <b>" ++ source.name ++ "</b> source.")
+                            , Effect.fromCmd <| toastInfo ("Relation added to <b>" ++ source.name ++ "</b> source.")
                             )
 
                         Nothing ->
-                            ( { model | virtualRelation = Nothing }, getSourceId src ref )
+                            ( { model | virtualRelation = Nothing }, Effect.fromCmd <| getSourceId src ref )
 
         VRMove pos ->
-            ( { model | virtualRelation = model.virtualRelation |> Maybe.map (\vr -> { vr | mouse = pos }) }, Cmd.none )
+            ( { model | virtualRelation = model.virtualRelation |> Maybe.map (\vr -> { vr | mouse = pos }) }, Effect.none )
 
         VRCancel ->
-            ( { model | virtualRelation = Nothing }, Cmd.none )
+            ( { model | virtualRelation = Nothing }, Effect.none )

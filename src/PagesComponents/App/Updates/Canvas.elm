@@ -2,6 +2,7 @@ module PagesComponents.App.Updates.Canvas exposing (computeFit, fitCanvas, handl
 
 import Conf exposing (conf)
 import Dict exposing (Dict)
+import Effect exposing (Effect)
 import Libs.Area as Area exposing (Area)
 import Libs.Bool as B
 import Libs.DomInfo exposing (DomInfo)
@@ -15,7 +16,10 @@ import Models.Project exposing (Project, tablesArea, viewportArea, viewportSize)
 import Models.Project.CanvasProps exposing (CanvasProps)
 import Models.Project.Layout exposing (Layout)
 import Models.Project.TableProps exposing (TableProps)
+import PagesComponents.App.Models exposing (Msg)
 import PagesComponents.App.Updates.Helpers exposing (setCanvas, setLayout, setTables)
+import PagesComponents.App.Updates.Project exposing (updateProjectUrl)
+import Ports
 
 
 handleWheel : WheelEvent -> CanvasProps -> CanvasProps
@@ -150,7 +154,16 @@ computeZoom viewport padding content zoom =
     newZoom
 
 
-resetCanvas : Project -> Project
+resetCanvas : Project -> ( Project, Effect Msg )
 resetCanvas project =
-    { project | usedLayout = Nothing }
-        |> setLayout (\l -> { l | tables = [], hiddenTables = [], canvas = { position = { left = 0, top = 0 }, zoom = 1 } })
+    let
+        updatedProject =
+            { project | usedLayout = Nothing }
+                |> setLayout (\l -> { l | tables = [], hiddenTables = [], canvas = { position = { left = 0, top = 0 }, zoom = 1 } })
+    in
+    ( updatedProject
+    , Effect.batch
+        [ updateProjectUrl updatedProject
+        , Effect.fromCmd <| Ports.click conf.ids.searchInput
+        ]
+    )
