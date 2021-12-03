@@ -116,35 +116,84 @@ window.addEventListener('load', function () {
         sendToElm({ kind: 'GotProjects', projects: values })
     }
     let saveProjectToastId = null;
-    function saveProject(project) {
+    async function saveProjectOnServer(project) {
         if (project.storage === 'repository' && !isDev) {
             if (!saveProjectToastId) {
-                const toastId = showToast({ kind: "warning", message: "Repository projects can only be saved on a development machine." });
+                const toastId = showToast({ kind: "warning", message: "Repository project '" + project.name + "' can only be saved on a development machine." });
                 saveProjectToastId = toastId;
             }
             return;
         }
 
+        const response = await fetch("api/project/save", {
+            method: "POST",
+            headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(project)
+        });
+        if (!response.ok) {
+            showToast({ kind: "error", message: "Project '" + project.name + "' could not be saved on the server. Code: " + response.status + " " + response.statusText });
+            return;
+        }
+    }
+    function saveProject(project) {
         const key = projectPrefix + project.id
         // setting dates should be done in Elm but can't find how to run a Task before calling a Port
         const now = Date.now()
         project.updatedAt = now
-        if (localStorage.getItem(key) === null) { project.createdAt = now }
-        try {
-            localStorage.setItem(key, JSON.stringify(project))
-        } catch (e) {
-            if (e.code === DOMException.QUOTA_EXCEEDED_ERR) {
-                showToast({ kind: 'error', message: "Can't save project, storage quota exceeded. Use a smaller schema or clean unused projects." })
-            } else {
-                showToast({ kind: 'error', message: "Can't save project: " + e.message })
+        if (project.storage === 'local-storage') {
+            if (localStorage.getItem(key) === null) { project.createdAt = now }
+            try {
+                localStorage.setItem(key, JSON.stringify(project))
+            } catch (e) {
+                if (e.code === DOMException.QUOTA_EXCEEDED_ERR) {
+                    showToast({ kind: 'error', message: "Can't save project, storage quota exceeded. Use a smaller schema or clean unused projects." })
+                } else {
+                    showToast({ kind: 'error', message: "Can't save project: " + e.message })
+                }
+                const name = 'local-storage'
+                const details = { error: e.name, message: e.message }
+                analytics.then(a => a.trackError(name, details)); errorTracking.then(e => e.track(name, details));
             }
-            const name = 'local-storage'
-            const details = { error: e.name, message: e.message }
-            analytics.then(a => a.trackError(name, details)); errorTracking.then(e => e.track(name, details));
+        } else {
+            saveProjectOnServer(project);
+
+            // If you move the project from localStorage to server it may stay in the localStorage.
+            // Remove it here so it never twice in the navbar.
+            localStorage.removeItem(key);
         }
     }
-    function dropProject(project) {
-        localStorage.removeItem(projectPrefix + project.id)
+    async function dropProjectOnServer(project) {
+        if (project.storage === 'repository' && !isDev) {
+            if (!saveProjectToastId) {
+                const toastId = showToast({ kind: "warning", message: "Repository project '" + project.name + "' can only be deleted on a development machine." });
+                saveProjectToastId = toastId;
+            }
+            return;
+        }
+
+        const response = await fetch("api/project/delete", {
+            method: "POST",
+            headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ id: project.id, storage: project.storage })
+        });
+        if (!response.ok) {
+            showToast({ kind: "error", message: "Project '" + project.name + "' could not be saved on the server. Code: " + response.status + " " + response.statusText });
+            return;
+        }
+    }
+    async function dropProject(project) {
+        if (project.storage === 'local-storage') {
+            localStorage.removeItem(projectPrefix + project.id)
+        } else {
+            await dropProjectOnServer(project);
+        }
+        loadProjects()
     }
 
     function getLocalFile(maybeProjectId, maybeSourceId, file) {
@@ -197,9 +246,8 @@ window.addEventListener('load', function () {
         sendToElm({ kind: 'GotSizes', sizes: sizes })
     })
     function observeSizes(ids) {
-        requestAnimationFrame(function () {
-            ids.flatMap(maybeElementById).forEach(elt => resizeObserver.observe(elt));
-        });
+        ids.flatMap(maybeElementById).forEach(elt =>
+            resizeObserver.observe(elt));
     }
 
     const hotkeys = {}
