@@ -32,7 +32,7 @@ window.addEventListener('load', function () {
                 case 'ShowModal': showModal(msg.id); break;
                 case 'HideModal': hideModal(msg.id); break;
                 case 'HideOffcanvas': hideOffcanvas(msg.id); break;
-                case 'ActivateTooltipsAndPopovers': activateTooltipsAndPopovers(); break;
+                case 'ActivateTooltipsAndPopovers': break; // TODO: autoRegisterBootstrapTooltipsAndPopovers() below handles it already
                 case 'ShowToast': showToast(msg.toast); break;
                 case 'LoadProjects': loadProjects(); break;
                 case 'SaveProject': saveProject(msg.project); break;
@@ -63,10 +63,36 @@ window.addEventListener('load', function () {
     function hideOffcanvas(id) {
         bootstrap.Offcanvas.getOrCreateInstance(getElementById(id)).hide()
     }
-    function activateTooltipsAndPopovers() {
-        bootstrap && document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(e => bootstrap.Tooltip.getOrCreateInstance(e))
-        bootstrap && document.querySelectorAll('[data-bs-toggle="popover"]').forEach(e => bootstrap.Popover.getOrCreateInstance(e))
-    }
+    (function autoRegisterBootstrapTooltipsAndPopovers() {
+        this.window.addEventListener("mouseover", function (e) {
+            if (!bootstrap) return;
+
+            // Only activate bootstrap tooltip/popover for elements that are really 
+            // hit by the mouse. Solves the problem that registration all the 
+            // tooltip/popovers in the search results of the "find path" tool.
+            let current = e.target
+            while (current) {
+                if (!(current instanceof HTMLElement)) {
+                    // If a svg path is hit, try to continue with its parent.
+                    current = current.parentElement;
+                    continue;
+                }
+
+                const dataBsToggle = current.getAttribute("data-bs-toggle");
+                switch (dataBsToggle) {
+                    case "tooltip":
+                        bootstrap.Tooltip.getOrCreateInstance(current).show();
+                        return;
+
+                    case "popover":
+                        bootstrap.Popover.getOrCreateInstance(current).show();
+                        return;
+                }
+
+                current = current.parentElement
+            }
+        });
+    })();
 
     let toastCpt = 0
     function showToast(toast) {
@@ -368,7 +394,6 @@ window.addEventListener('load', function () {
     window.addEventListener('shown.bs.modal', e => {
         const input = e.target.querySelector('[autofocus]')
         input && input.focus()
-        activateTooltipsAndPopovers()
     })
     window.addEventListener('hidden.bs.toast', e => {
         if (saveProjectToastId && e.target.id === saveProjectToastId) {
